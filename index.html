@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get-wayGenerator - Professional Invoice & Slip Generator</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts for Template Typographies -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,400&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @keyframes slideUp { from{opacity:0;transform:translateY(20px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+        .auth-card { animation: slideUp .35s cubic-bezier(.22,.68,0,1.2) both }
+        .auth-bg { background: linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 45%,#7c3aed 100%) }
+        #app-root { display:flex; flex-direction:column; height:100vh }
+        /* Auth modal hidden by default — JS shows it only when needed */
+        #auth-modal { display:none }
+    </style>
+</head>
+<body class="text-slate-800">
+
+<!-- AUTH MODAL -->
+<div id="auth-modal" style="display:none" class="fixed inset-0 z-[9999] auth-bg items-center justify-center p-4">
+  <div class="auth-card bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+    <!-- Brand Header -->
+    <div class="auth-bg px-8 pt-8 pb-6 text-white text-center">
+      <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm border border-white/30">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <h1 class="text-2xl font-black tracking-tight">Get-way<span class="text-blue-200">Generator</span></h1>
+      <p class="text-white/70 text-sm mt-1">Sign in to save profiles &amp; invoice history</p>
+    </div>
+    <!-- Tabs -->
+    <div class="flex border-b border-gray-100 bg-gray-50">
+      <button id="auth-tab-btn-login"    onclick="authShowTab('login')"    class="flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-all">Sign In</button>
+      <button id="auth-tab-btn-register" onclick="authShowTab('register')" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-all">Register</button>
+      <button id="auth-tab-btn-phone"    onclick="authShowTab('phone')"    class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-all">Phone OTP</button>
+    </div>
+    <div class="p-7">
+      <!-- LOGIN -->
+      <div id="auth-tab-login" class="space-y-3">
+        <button onclick="authGoogleSignIn()" class="auth-btn w-full flex items-center justify-center gap-3 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 shadow-sm text-sm">
+          <svg class="w-5 h-5 shrink-0" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Continue with Google
+        </button>
+        <div class="flex items-center gap-3"><div class="flex-1 h-px bg-gray-200"></div><span class="text-[11px] text-gray-400 font-medium">or</span><div class="flex-1 h-px bg-gray-200"></div></div>
+        <input id="login-email" type="email" placeholder="Email address" class="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all">
+        <input id="login-pass"  type="password" placeholder="Password"   class="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all">
+        <div class="flex justify-end"><button onclick="authForgotPassword()" class="text-xs text-blue-600 hover:underline font-medium">Forgot password?</button></div>
+        <button onclick="authEmailLogin()" class="auth-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all active:scale-95 shadow-md text-sm">Sign In</button>
+        <p class="text-center text-xs text-gray-400">No account? <button onclick="authShowTab('register')" class="text-blue-600 font-semibold hover:underline">Register</button></p>
+      </div>
+      <!-- REGISTER -->
+      <div id="auth-tab-register" class="hidden space-y-3">
+        <button onclick="authGoogleSignIn()" class="auth-btn w-full flex items-center justify-center gap-3 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all active:scale-95 shadow-sm text-sm">
+          <svg class="w-5 h-5 shrink-0" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Sign up with Google
+        </button>
+        <div class="flex items-center gap-3"><div class="flex-1 h-px bg-gray-200"></div><span class="text-[11px] text-gray-400 font-medium">or</span><div class="flex-1 h-px bg-gray-200"></div></div>
+        <input id="reg-name"  type="text"     placeholder="Full name"             class="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all">
+        <input id="reg-email" type="email"    placeholder="Email address"         class="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all">
+        <input id="reg-pass"  type="password" placeholder="Password (min 6 chars)" class="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all">
+        <input id="reg-pass2" type="password" placeholder="Confirm password"      class="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all">
+        <button onclick="authEmailRegister()" class="auth-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all active:scale-95 shadow-md text-sm">Create Account</button>
+        <p class="text-center text-xs text-gray-400">Have an account? <button onclick="authShowTab('login')" class="text-blue-600 font-semibold hover:underline">Sign in</button></p>
+      </div>
+      <!-- PHONE OTP -->
+      <div id="auth-tab-phone" class="hidden space-y-3">
+        <div id="phone-step" class="space-y-3">
+          <p class="text-sm text-gray-500 text-center">Enter your number with country code</p>
+          <input id="phone-input" type="tel" placeholder="+880 1700 000000"
+            class="w-full text-sm px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all">
+          <p class="text-[11px] text-gray-400 text-center">🇧🇩 Bangladesh: +880 &nbsp;·&nbsp; 🇺🇸 USA: +1 &nbsp;·&nbsp; 🇬🇧 UK: +44</p>
+          <!-- reCAPTCHA renders here — must be visible -->
+          <div id="recaptcha-container" class="flex justify-center min-h-[78px] items-center"></div>
+          <button onclick="authSendOTP()" class="auth-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all active:scale-95 text-sm">
+            Send OTP
+          </button>
+        </div>
+        <div id="otp-step" class="hidden space-y-3">
+          <div class="text-center">
+            <p class="text-sm text-gray-700 font-semibold">Enter the 6-digit code</p>
+            <p class="text-xs text-gray-400 mt-0.5">Sent to <span id="otp-phone-display" class="font-semibold text-gray-600"></span></p>
+          </div>
+          <input id="otp-input" type="number" placeholder="123456" maxlength="6"
+            class="w-full text-sm px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all text-center tracking-[0.4em] font-bold text-2xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+          <button onclick="authVerifyOTP()" class="auth-btn w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-all active:scale-95 text-sm">
+            Verify &amp; Sign In
+          </button>
+          <div class="flex items-center justify-between text-xs text-gray-400 pt-1">
+            <button onclick="authResendOTP()" class="text-blue-600 hover:underline font-medium">Resend OTP</button>
+            <button onclick="authResetPhone()" class="hover:text-gray-600">← Change number</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP ROOT (hidden until logged in) -->
+<div id="app-root">
+
+    <!-- Top Navigation (SaaS Style) -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('categories')">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                        <i data-lucide="zap" class="text-white w-5 h-5"></i>
+                    </div>
+                    <span class="font-extrabold text-2xl tracking-tight text-gray-900">Get-way<span class="text-blue-600">Generator</span></span>
+                </div>
+                
+                <!-- Step Progress Indicator -->
+                <div class="hidden md:flex items-center flex-1 justify-center px-10">
+                    <div class="flex items-center w-full max-w-md">
+                        <div class="step-indicator flex-1 flex flex-col items-center relative" id="step-1">
+                            <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm z-10 transition-colors">1</div>
+                            <span class="text-xs font-medium mt-1 absolute -bottom-5 whitespace-nowrap">Category</span>
+                        </div>
+                        <div class="h-1 flex-1 bg-gray-200 mx-[-15px] z-0 transition-colors" id="line-1"></div>
+                        <div class="step-indicator flex-1 flex flex-col items-center relative" id="step-2">
+                            <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-sm z-10 transition-colors">2</div>
+                            <span class="text-xs font-medium mt-1 absolute -bottom-5 whitespace-nowrap text-gray-500">Style</span>
+                        </div>
+                        <div class="h-1 flex-1 bg-gray-200 mx-[-15px] z-0 transition-colors" id="line-2"></div>
+                        <div class="step-indicator flex-1 flex flex-col items-center relative" id="step-3">
+                            <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-sm z-10 transition-colors">3</div>
+                            <span class="text-xs font-medium mt-1 absolute -bottom-5 whitespace-nowrap text-gray-500">Template</span>
+                        </div>
+                        <div class="h-1 flex-1 bg-gray-200 mx-[-15px] z-0 transition-colors" id="line-3"></div>
+                        <div class="step-indicator flex-1 flex flex-col items-center relative" id="step-4">
+                            <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-sm z-10 transition-colors">4</div>
+                            <span class="text-xs font-medium mt-1 absolute -bottom-5 whitespace-nowrap text-gray-500">Editor</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- History -->
+                    <button id="nav-history-btn" onclick="openInvoiceHistory()" title="Invoice History"
+                        class="hidden items-center gap-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 text-xs font-bold px-3 py-2 rounded-xl transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span class="hidden sm:inline">History</span>
+                    </button>
+                    <!-- Team -->
+                    <button id="nav-team-btn" onclick="openTeamManager()" title="Team"
+                        class="hidden items-center gap-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 border border-gray-200 hover:border-purple-200 text-xs font-bold px-3 py-2 rounded-xl transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <span class="hidden sm:inline">Team</span>
+                    </button>
+                    <!-- Guest Login Button -->
+                    <button id="nav-login-btn" onclick="if(window.showAuthModal) window.showAuthModal({tab:'login'})"
+                        class="hidden items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-95 shadow-sm shadow-blue-200">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                        Sign In
+                    </button>
+                    <!-- User dropdown -->
+                    <div class="relative">
+                        <button id="nav-avatar-btn" onclick="toggleUserMenu()" class="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-2 py-1.5 transition-all">
+                            <img id="nav-avatar" src="https://ui-avatars.com/api/?name=U&background=0D8ABC&color=fff&bold=true" class="w-7 h-7 rounded-lg object-cover" alt="avatar">
+                            <span id="nav-username" class="text-xs font-bold text-gray-700 hidden sm:block max-w-[90px] truncate">User</span>
+                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="user-menu" class="hidden absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-2xl z-[200] overflow-hidden">
+                            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                                <p class="text-xs font-bold text-gray-900 truncate" id="menu-username">User</p>
+                                <p class="text-[10px] text-gray-400 truncate" id="menu-email"></p>
+                            </div>
+                            <div class="p-2 space-y-0.5">
+                                <button onclick="openInvoiceHistory();toggleUserMenu()" class="w-full text-left text-sm px-3 py-2 rounded-xl hover:bg-gray-50 text-gray-700 font-medium flex items-center gap-2 transition-colors">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    Invoice History
+                                </button>
+                                <button onclick="openTeamManager();toggleUserMenu()" class="w-full text-left text-sm px-3 py-2 rounded-xl hover:bg-gray-50 text-gray-700 font-medium flex items-center gap-2 transition-colors">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    Team Workspace
+                                </button>
+                            </div>
+                            <div class="p-2 border-t border-gray-100">
+                                <button onclick="authSignOut()" class="w-full text-left text-sm px-3 py-2 rounded-xl hover:bg-red-50 text-red-500 font-medium flex items-center gap-2 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                    Sign Out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-auto relative">
+        
+        <!-- View 1: Categories -->
+        <div id="view-categories" class="view-section min-h-full overflow-y-auto p-6 md:p-12">
+            <div class="max-w-5xl mx-auto">
+
+                <!-- ── DASHBOARD (inline, above categories) ── -->
+                <div id="dashboard-section"></div>
+
+                <!-- ── CUSTOMER MANAGER QUICK LINK ── -->
+                <div class="flex items-center justify-between mb-4" id="customer-bar">
+                    <div>
+                        <h1 class="text-3xl font-black text-gray-900 tracking-tight">What are you generating today?</h1>
+                        <p class="text-gray-500 mt-1">Select a category to explore tailored templates.</p>
+                    </div>
+                    <button onclick="openCustomerManager()"
+                        class="hidden sm:flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold px-4 py-2.5 rounded-xl transition-all hover:shadow-sm">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Customers
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <div onclick="navigate('styles', {category: 'hospital'})" class="group bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:border-blue-500 transition-all duration-300 cursor-pointer flex flex-col items-center text-center">
+                        <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-blue-600 transition-all duration-300">
+                            <i data-lucide="activity" class="w-8 h-8 text-blue-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-xl text-gray-900 mb-2">Hospital & Medical</h3>
+                        <p class="text-sm text-gray-500">Clinical invoices, prescriptions, and medical receipts.</p>
+                    </div>
+                    
+                    <div onclick="navigate('styles', {category: 'grocery'})" class="group bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:border-green-500 transition-all duration-300 cursor-pointer flex flex-col items-center text-center">
+                        <div class="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-green-600 transition-all duration-300">
+                            <i data-lucide="shopping-cart" class="w-8 h-8 text-green-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-xl text-gray-900 mb-2">Grocery & Retail</h3>
+                        <p class="text-sm text-gray-500">Supermarket thermal receipts and retail invoices.</p>
+                    </div>
+
+                    <div onclick="navigate('styles', {category: 'education'})" class="group bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:border-indigo-500 transition-all duration-300 cursor-pointer flex flex-col items-center text-center">
+                        <div class="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-indigo-600 transition-all duration-300">
+                            <i data-lucide="graduation-cap" class="w-8 h-8 text-indigo-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-xl text-gray-900 mb-2">School & College</h3>
+                        <p class="text-sm text-gray-500">Tuition fee slips, university billing, and library receipts.</p>
+                    </div>
+
+                    <div onclick="navigate('styles', {category: 'restaurant'})" class="group bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:border-orange-500 transition-all duration-300 cursor-pointer flex flex-col items-center text-center">
+                        <div class="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-orange-600 transition-all duration-300">
+                            <i data-lucide="utensils" class="w-8 h-8 text-orange-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-xl text-gray-900 mb-2">Restaurant & Cafe</h3>
+                        <p class="text-sm text-gray-500">Dine-in bills, takeaway slips, and bar tabs.</p>
+                    </div>
+
+                    <div onclick="navigate('styles', {category: 'transport'})" class="group bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:border-amber-500 transition-all duration-300 cursor-pointer flex flex-col items-center text-center">
+                        <div class="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-amber-600 transition-all duration-300">
+                            <i data-lucide="truck" class="w-8 h-8 text-amber-600 group-hover:text-white transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-xl text-gray-900 mb-2">Transport & Logistics</h3>
+                        <p class="text-sm text-gray-500">Shipping manifests, travel tickets, and cargo invoices.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 2: Styles -->
+        <div id="view-styles" class="view-section hidden h-full overflow-y-auto p-6 md:p-12">
+            <div class="max-w-5xl mx-auto fade-in">
+                <button onclick="navigate('categories')" class="text-sm text-gray-500 hover:text-gray-900 mb-8 flex items-center gap-2 font-medium transition-colors">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Categories
+                </button>
+                
+                <div class="text-center mb-12">
+                    <h1 class="text-4xl font-black text-gray-900 mb-4 tracking-tight">Choose your aesthetic</h1>
+                    <p class="text-lg text-gray-500 capitalize" id="style-subtitle">Select a design style for the category.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <!-- Style 1: Old -->
+                    <div onclick="navigate('templates', {style: 'old'})" class="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100">
+                        <div class="h-48 bg-gray-900 flex items-center justify-center relative">
+                            <i data-lucide="printer" class="w-16 h-16 text-gray-700 absolute opacity-50 group-hover:scale-110 transition-transform duration-500"></i>
+                            <div class="bg-white p-4 w-32 shadow-lg z-10 thermal-paper rotate-[-5deg] group-hover:rotate-0 transition-transform duration-500">
+                                <div class="w-full h-2 bg-gray-200 mb-2"></div>
+                                <div class="w-3/4 h-2 bg-gray-200 mb-4"></div>
+                                <div class="w-full h-1 border-t border-dashed border-gray-300 mb-2"></div>
+                                <div class="w-full h-2 bg-gray-200 mb-1"></div>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <h3 class="font-bold text-2xl text-gray-900 mb-2">Old Style</h3>
+                            <p class="text-gray-500 leading-relaxed text-sm">Classic thermal printer look. Narrow layouts, monospace fonts, dashed borders, and black & white minimalism.</p>
+                        </div>
+                    </div>
+
+                    <!-- Style 2: Modern -->
+                    <div onclick="navigate('templates', {style: 'modern'})" class="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100">
+                        <div class="h-48 bg-blue-50 flex items-center justify-center relative">
+                            <div class="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,#fff,rgba(255,255,255,0.6))]"></div>
+                            <div class="bg-white w-40 h-32 shadow-md rounded border border-gray-200 z-10 p-3 group-hover:scale-105 transition-transform duration-500">
+                                <div class="flex justify-between mb-4">
+                                    <div class="w-8 h-8 bg-blue-100 rounded"></div>
+                                    <div class="w-12 h-4 bg-gray-100 rounded"></div>
+                                </div>
+                                <div class="w-full h-10 bg-gray-50 rounded border border-gray-100"></div>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <h3 class="font-bold text-2xl text-gray-900 mb-2">Modern Style</h3>
+                            <p class="text-gray-500 leading-relaxed text-sm">Professional A4 layouts suitable for B2B. Clean typography, soft color accents, and structured data tables.</p>
+                        </div>
+                    </div>
+
+                    <!-- Style 3: Trendy -->
+                    <div onclick="navigate('templates', {style: 'trendy'})" class="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100">
+                        <div class="h-48 bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center relative overflow-hidden">
+                            <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+                            <div class="bg-white/90 backdrop-blur-md w-40 h-32 shadow-2xl rounded-2xl border border-white/50 z-10 p-3 group-hover:-translate-y-2 transition-transform duration-500">
+                                <div class="w-full h-8 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg mb-3"></div>
+                                <div class="w-3/4 h-3 bg-gray-200 rounded mb-2"></div>
+                                <div class="w-1/2 h-3 bg-gray-200 rounded"></div>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <h3 class="font-bold text-2xl text-gray-900 mb-2">Trendy Style</h3>
+                            <p class="text-gray-500 leading-relaxed text-sm">Creative & bold. Vibrant gradients, large shadows, rounded card layouts, and premium SaaS-like aesthetics.</p>
+                        </div>
+                    </div>
+
+                    <!-- Style 4: Minimal -->
+                    <div onclick="navigate('templates', {style: 'minimal'})" class="group relative bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 cursor-pointer border border-gray-100">
+                        <div class="h-48 bg-slate-50 flex items-center justify-center relative">
+                            <div class="bg-white w-40 h-28 shadow-sm rounded-xl border border-dashed border-gray-200 z-10 p-3 group-hover:scale-105 transition-transform duration-500">
+                                <div class="w-16 h-2 bg-gray-200 rounded mb-3"></div>
+                                <div class="w-full h-px bg-gray-100 mb-3"></div>
+                                <div class="w-3/4 h-2 bg-gray-100 rounded mb-1"></div>
+                                <div class="w-2/3 h-2 bg-gray-100 rounded"></div>
+                            </div>
+                        </div>
+                        <div class="p-8">
+                            <h3 class="font-bold text-2xl text-gray-900 mb-2">Minimal Style</h3>
+                            <p class="text-gray-500 leading-relaxed text-sm">Ultra-clean layout with thin lines, tight spacing, and maximum whitespace.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 3: Template Gallery -->
+        <div id="view-templates" class="view-section hidden h-full overflow-y-auto p-6 md:p-12">
+            <div class="max-w-7xl mx-auto fade-in">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                    <div>
+                        <button onclick="navigate('styles', {category: state.category})" class="text-sm text-gray-500 hover:text-gray-900 mb-2 flex items-center gap-2 font-medium transition-colors">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Styles
+                        </button>
+                        <h1 class="text-3xl font-black text-gray-900 tracking-tight" id="gallery-title">Select a Template</h1>
+                    </div>
+                    <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-semibold text-sm border border-blue-100 flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4"></i> <span id="template-count-badge">Templates Loaded</span>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Grid injected via JS -->
+                <div id="templates-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+            </div>
+        </div>
+
+        <!-- View 4: The Editor -->
+        <div id="view-editor" class="view-section hidden h-full flex flex-col bg-slate-50">
+
+            <!-- Mobile Tab Bar (visible only on small screens) -->
+            <div class="flex md:hidden border-b border-gray-200 bg-white z-30 shrink-0">
+                <button id="tab-edit" onclick="switchMobileTab('edit')" class="flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-2 bg-white text-blue-600 shadow-sm transition-all">
+                    <i data-lucide="settings-2" class="w-4 h-4"></i> Edit
+                </button>
+                <button id="tab-preview" onclick="switchMobileTab('preview')" class="flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-2 text-gray-500 transition-all">
+                    <i data-lucide="eye" class="w-4 h-4"></i> Preview
+                </button>
+            </div>
+
+            <div class="flex flex-1 overflow-hidden flex-col md:flex-row">
+            <!-- Left Pane: Form Inputs -->
+            <div id="editor-left-pane" class="w-full md:w-[400px] lg:w-[450px] bg-white border-r border-gray-200 overflow-y-auto shadow-2xl z-20 flex flex-col shrink-0 fade-in relative">
+                <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-white/90 backdrop-blur sticky top-0 z-30">
+                    <div>
+                        <h2 class="font-bold text-gray-900 text-lg flex items-center gap-2">
+                            <i data-lucide="settings-2" class="w-5 h-5 text-blue-600"></i> Editor
+                        </h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Live JSON Data Binding</p>
+                    </div>
+                    <button onclick="navigate('templates', {style: state.style})" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md font-medium transition-colors flex items-center gap-1">
+                        <i data-lucide="x" class="w-3 h-3"></i> Close
+                    </button>
+                </div>
+
+                <div class="p-6 flex-1" id="editor-form-container">
+                    <!-- Form sections injected via JS -->
+                </div>
+            </div>
+
+            <!-- Right Pane: Live Preview -->
+            <div class="flex-1 overflow-auto bg-slate-200/50 p-4 md:p-8 flex flex-col relative hidden md:flex" id="preview-wrapper">
+
+                <!-- Floating Action Bar -->
+                <div class="absolute top-6 right-6 md:right-10 flex gap-2 z-20 fade-in flex-wrap justify-end">
+                    <button onclick="guardedSaveInvoice()" title="Save to Invoice History"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl shadow-md text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-lg active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        Save
+                    </button>
+                    <button onclick="openCustomerManager()" title="Customer Manager"
+                        class="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl shadow-sm border border-gray-200 text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-md active:scale-95">
+                        <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        Customers
+                    </button>
+                    <button id="btn-export-png" onclick="exportToPNG()" class="bg-white hover:bg-gray-50 text-gray-800 px-4 py-2.5 rounded-xl shadow-sm border border-gray-200 text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-md active:scale-95">
+                        <i data-lucide="image" class="w-4 h-4 text-blue-500"></i> PNG
+                    </button>
+                    <button id="btn-export-pdf" onclick="exportToPDF()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/30 text-sm font-semibold flex items-center gap-2 transition-all hover:shadow-xl active:scale-95">
+                        <i data-lucide="download" class="w-4 h-4"></i> PDF
+                    </button>
+                </div>
+
+                <!-- Guest watermark notice -->
+                <div id="guest-export-notice" class="absolute top-20 left-4 right-4 md:left-8 md:right-auto md:w-auto bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-xs text-amber-700 font-semibold flex items-center gap-2 z-10 pointer-events-none">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Guest mode — exports include a watermark. <button class="underline pointer-events-auto ml-1" onclick="if(window.showAuthModal) window.showAuthModal({tab:'login'})">Sign in to remove</button>
+                </div>
+
+                <!-- Preview Canvas -->
+                <div class="flex-1 flex justify-center items-start pt-20 pb-16 w-full">
+                    <div id="invoice-preview-content" class="transition-all duration-300 w-full max-w-4xl shadow-2xl bg-white">
+                        <!-- Invoice HTML injected via JSON Render Engine -->
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Autosave Toast -->
+    <div id="saved-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-xl flex items-center gap-2 opacity-0 translate-y-2 transition-all duration-300 pointer-events-none">
+        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        Draft saved
+    </div>
+
+    <!-- Profile Toast -->
+    <div id="profile-toast" class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 bg-blue-600 text-white text-xs font-semibold px-5 py-2.5 rounded-full shadow-xl flex items-center gap-2 opacity-0 translate-y-2 transition-all duration-300 pointer-events-none">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        <span id="profile-toast-msg"></span>
+    </div>
+
+</div><!-- /app-root -->
+
+    <!-- Firebase (ES module) -->
+    <script type="module" src="firebase.js"></script>
+
+    <!-- App Bundle -->
+    <script src="app-bundle.js"></script>
+
+    <!-- Sync nav dropdown after Firebase sets currentUser -->
+    <script>
+        const _ni = setInterval(() => {
+            const u = window._currentUser;
+            if (!u) return;
+            const mu = document.getElementById('menu-username');
+            const me = document.getElementById('menu-email');
+            if (mu) mu.textContent = u.displayName || u.email?.split('@')[0] || 'User';
+            if (me) me.textContent = u.email || '';
+            clearInterval(_ni);
+        }, 300);
+        // Close user-menu on outside click
+        document.addEventListener('click', e => {
+            const menu = document.getElementById('user-menu');
+            const btn  = document.getElementById('nav-avatar-btn');
+            if (menu && !menu.contains(e.target) && !btn?.contains(e.target)) menu.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
