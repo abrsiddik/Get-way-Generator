@@ -65,7 +65,7 @@ onAuthStateChanged(auth, async (user) => {
         updateNavUI(user);
         revealNavBtns();
         // Refresh dashboard if visible
-        if (window.renderDashboard) window.renderDashboard();
+        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 100);
     } else {
         window._currentUser = null;
         window._businessProfile = null;
@@ -73,7 +73,7 @@ onAuthStateChanged(auth, async (user) => {
         updateNavForGuest();
         hideNavBtns();
         // Refresh dashboard to show guest state
-        if (window.renderDashboard) window.renderDashboard();
+        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 100);
     }
 });
 
