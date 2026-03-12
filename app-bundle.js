@@ -1305,17 +1305,17 @@ function renderPreview() {
             // standard
             html = `
             <div id="export-target" class="bg-white mx-auto relative ${template.font} overflow-hidden rounded-none w-full max-w-[794px] min-h-[1123px] box-border">
-                <div class="absolute top-0 right-0 w-[500px] h-[500px] ${pr} rounded-bl-full opacity-[0.05] pointer-events-none"></div>
-                <div class="absolute bottom-0 left-0 w-[300px] h-[300px] ${pr} rounded-tr-full opacity-[0.05] pointer-events-none"></div>
-                <div class="${pr} p-12 text-white shadow-md relative z-10 ${template.structure.rounded ? 'rounded-b-[40px] mx-4 mt-4' : ''}">
-                    <div class="flex justify-between items-center">
+                <div class="absolute top-0 right-0 w-[500px] h-[500px] ${pr} rounded-bl-full opacity-[0.05] pointer-events-none z-0"></div>
+                <div class="absolute bottom-0 left-0 w-[300px] h-[300px] ${pr} rounded-tr-full opacity-[0.05] pointer-events-none z-0"></div>
+                <div class="${pr} p-6 md:p-12 text-white shadow-md relative z-10 overflow-hidden ${template.structure.rounded ? 'rounded-b-[40px] mx-4 mt-4' : ''}">
+                    <div class="flex flex-wrap justify-between items-start gap-4">
                         <div class="flex items-center gap-5">
                             ${data.logo ? `
                             <div class="bg-white/10 backdrop-blur-md p-3 rounded-2xl border border-white/20 shadow-xl">
                                 <img src="${data.logo}" class="h-16 w-16 object-contain drop-shadow-lg" style="filter: brightness(0) invert(1);" />
                             </div>` : ''}
                             <div>
-                                <h1 class="text-3xl font-black tracking-tight drop-shadow-md">${escapeHtml(data.orgName)}</h1>
+                                <h1 class="text-xl md:text-3xl font-black tracking-tight drop-shadow-md leading-tight">${escapeHtml(data.orgName)}</h1>
                                 <p class="text-white/80 mt-1 text-sm font-medium flex gap-3">
                                     <span>${escapeHtml(data.email)}</span>
                                     <span>${escapeHtml(data.phone)}</span>
@@ -1808,7 +1808,6 @@ window.clearBusinessProfile  = function() {
     }
 };
 // ── Lazy wrappers for firebase.js functions only ────────────
-// (functions already defined in app-bundle.js above are NOT listed here)
 window.saveInvoiceToHistory = function(...a) { if(window._fb_saveInvoiceToHistory) return window._fb_saveInvoiceToHistory(...a); showConversionPopup('save'); };
 window.openInvoiceHistory   = function(...a) { if(window._fb_openInvoiceHistory)   return window._fb_openInvoiceHistory(...a);   if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
 window.openTeamManager      = function(...a) { if(window._fb_openTeamManager)       return window._fb_openTeamManager(...a);       if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
