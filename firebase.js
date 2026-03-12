@@ -143,7 +143,6 @@ async function ensureUserDoc(user) {
 
     const [userSnap, wsSnap] = await Promise.all([getDoc(userRef), getDoc(wsRef)]);
 
-    // Create user doc if missing
     if (!userSnap.exists()) {
         await setDoc(userRef, {
             uid:         user.uid,
@@ -155,8 +154,6 @@ async function ensureUserDoc(user) {
         });
     }
 
-    // ALWAYS create workspace if missing — this is the save permission fix
-    // A user doc can exist without a workspace doc (e.g. after data loss, first save)
     if (!wsSnap.exists()) {
         await setDoc(wsRef, {
             name:      (displayName || 'My') + "'s Workspace",
@@ -167,6 +164,18 @@ async function ensureUserDoc(user) {
             members:   [{ uid: user.uid, email: user.email||'', name: displayName, role: 'admin' }],
             createdAt: serverTimestamp()
         });
+        console.log('✅ Workspace created for', user.uid);
+    } else {
+        // Workspace exists — make sure editorIds includes this user (repair old docs)
+        const data = wsSnap.data();
+        if (!data.editorIds?.includes(user.uid)) {
+            await updateDoc(wsRef, {
+                editorIds: arrayUnion(user.uid),
+                memberIds: arrayUnion(user.uid),
+                adminIds:  arrayUnion(user.uid)
+            });
+            console.log('✅ Repaired editorIds for', user.uid);
+        }
     }
 }
 
@@ -288,9 +297,25 @@ window.saveInvoiceToHistory = async function() {
     if (!user) return toast('Please sign in first', 'error');
     if (!window.state) return;
     try {
-        await ensureUserDoc(user);  // creates workspace + editorIds if missing
+        console.log('💾 Save started, uid:', user.uid);
+        await ensureUserDoc(user);
+
         const wsId = await getWorkspaceId();
-        if (!wsId) return toast('Workspace not ready — sign out and back in.', 'error');
+        console.log('💾 workspaceId:', wsId);
+
+        // Verify workspace doc has editorIds before attempting write
+        const wsSnap = await getDoc(doc(db, 'workspaces', wsId));
+        if (!wsSnap.exists()) {
+            console.error('❌ Workspace doc missing after ensureUserDoc!');
+            return toast('Workspace missing — please sign out and back in.', 'error');
+        }
+        const wsData = wsSnap.data();
+        console.log('💾 editorIds:', wsData.editorIds, '| ownerId:', wsData.ownerId);
+        if (!wsData.editorIds?.includes(user.uid)) {
+            console.error('❌ uid not in editorIds!');
+            return toast('Permission error — your account is not an editor. Sign out and back in.', 'error');
+        }
+
         const d = window.state.invoiceData;
         const inv = {
             orgName:      d.orgName      || '',
