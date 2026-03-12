@@ -65,7 +65,8 @@ onAuthStateChanged(auth, async (user) => {
         updateNavUI(user);
         revealNavBtns();
         // Refresh dashboard if visible
-        if (window.renderDashboard) window.renderDashboard();
+        if (window._fb_renderDashboard) window._fb_renderDashboard();
+        else if (window.renderDashboard) window.renderDashboard();
     } else {
         window._currentUser = null;
         window._businessProfile = null;
@@ -73,7 +74,8 @@ onAuthStateChanged(auth, async (user) => {
         updateNavForGuest();
         hideNavBtns();
         // Refresh dashboard to show guest state
-        if (window.renderDashboard) window.renderDashboard();
+        if (window._fb_renderDashboard) window._fb_renderDashboard();
+        else if (window.renderDashboard) window.renderDashboard();
     }
 });
 
@@ -239,30 +241,55 @@ window.deleteCustomer = async function(customerId) {
 
 // ── Dashboard Stats ───────────────────────────────────────────
 window.loadDashboardStats = async function() {
-    const wsId = await getWorkspaceId();
-    if (!wsId) return null;
+    const user = window._currentUser;
+    if (!user) return null;
     try {
-        const snap  = await getDocs(collection(db, 'workspaces', wsId, 'invoices'));
-        const invoices = snap.docs.map(d => d.data());
-        const now   = new Date();
-        const thisMonth = invoices.filter(inv => {
+        await ensureUserDoc(user);
+        const wsId = await getWorkspaceId();
+        if (!wsId) return null;
+        const snap     = await getDocs(collection(db, 'workspaces', wsId, 'invoices'));
+        const invoices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const now      = new Date();
+
+        // This month
+        const thisMonthInvs = invoices.filter(inv => {
             if (!inv.savedAt?.toDate) return false;
             const d = inv.savedAt.toDate();
             return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
         });
-        const totalRevenue = invoices.reduce((s, inv) =>
-            s + (inv.items||[]).reduce((si, i) => si + (i.qty * i.price), 0), 0);
-        const currency = invoices[0]?.currency || 'BDT';
+
+        // Revenue calculations
+        const getTotal = inv => (inv.items||[]).reduce((s,i) => s + ((i.qty||0)*(i.price||0)), 0);
+        const totalRevenue     = invoices.reduce((s, inv) => s + getTotal(inv), 0);
+        const monthRevenue     = thisMonthInvs.reduce((s, inv) => s + getTotal(inv), 0);
+        const totalPaid        = invoices.reduce((s, inv) => s + (inv.paid||0), 0);
+        const totalUnpaid      = Math.max(0, totalRevenue - totalPaid);
+        const currency         = invoices[0]?.currency || 'BDT';
+
+        // Category breakdown
+        const catCount = {};
+        invoices.forEach(inv => {
+            const c = inv.category || 'other';
+            catCount[c] = (catCount[c] || 0) + 1;
+        });
+        const topCategory = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+
+        // Sorted recent
+        const sorted = [...invoices].sort((a,b) => (b.savedAt?.seconds||0) - (a.savedAt?.seconds||0));
+
         return {
-            total:       invoices.length,
-            thisMonth:   thisMonth.length,
-            revenue:     totalRevenue,
+            total:        invoices.length,
+            thisMonth:    thisMonthInvs.length,
+            revenue:      totalRevenue,
+            monthRevenue,
+            totalPaid,
+            totalUnpaid,
+            topCategory,
             currency,
-            recent:      invoices
-                .sort((a,b) => (b.savedAt?.seconds||0) - (a.savedAt?.seconds||0))
-                .slice(0, 5)
+            catCount,
+            recent:       sorted.slice(0, 5)
         };
-    } catch(e) { return null; }
+    } catch(e) { console.warn('loadDashboardStats:', e); return null; }
 };
 
 // ── Expose showAuthModal globally so app-bundle can call it ───
@@ -763,9 +790,6 @@ function setBtnLoading(on) {
 }
 
 // ── Bridge assignments for lazy wrappers in app-bundle.js ────
-// app-bundle.js runs first (regular script), firebase.js runs second (ES module).
-// The lazy wrappers in app-bundle check window._fb_* at call time, so they
-// always get the real Firebase functions even though they were assigned later.
 window._fb_saveInvoiceToHistory = window.saveInvoiceToHistory;
 window._fb_openInvoiceHistory   = window.openInvoiceHistory;
 window._fb_openTeamManager      = window.openTeamManager;
@@ -780,3 +804,4 @@ window._fb_authForgotPassword   = window.authForgotPassword;
 window._fb_authSendOTP          = window.authSendOTP;
 window._fb_authVerifyOTP        = window.authVerifyOTP;
 window._fb_renderDashboard      = window.renderDashboard;
+window._fb_loadDashboardStats   = window.loadDashboardStats;
