@@ -1543,17 +1543,18 @@ function guardedSaveInvoice() {
 window.renderDashboard = async function() {
     const container = document.getElementById('dashboard-section');
     if (!container) return;
+
     const user = window._currentUser;
 
-    // ── GUEST ─────────────────────────────────────────────────
+    // Guest state
     if (!user) {
         container.innerHTML = `
-        <div class="bg-gradient-to-r from-blue-600 to-violet-600 rounded-3xl p-7 mb-8 text-white relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 w-56 h-56 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-7 mb-8 text-white relative overflow-hidden">
+            <div class="absolute -right-10 -top-10 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
             <div class="relative">
-                <p class="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">👋 Welcome</p>
+                <p class="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">Welcome, Guest</p>
                 <h2 class="text-2xl font-black mb-1">You're in Guest Mode</h2>
-                <p class="text-blue-100 text-sm mb-5">Generate & export invoices freely. Sign in to save history, remove watermarks, and unlock all features.</p>
+                <p class="text-blue-100 text-sm mb-4">Create & download invoices freely. Sign in to save history, remove watermarks, and unlock all features.</p>
                 <div class="flex gap-3 flex-wrap">
                     <button onclick="if(window.showAuthModal) window.showAuthModal({tab:'register'})"
                         class="bg-white text-blue-700 font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-blue-50 transition-all active:scale-95 shadow-md">
@@ -1569,152 +1570,82 @@ window.renderDashboard = async function() {
         return;
     }
 
-    const name = escapeHtml(user.displayName || user.email?.split('@')[0] || 'there');
-    const hour = new Date().getHours();
-    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-
-    // ── SKELETON ─────────────────────────────────────────────
+    // Loading state
     container.innerHTML = `
     <div class="mb-8">
-        <div class="flex items-start justify-between mb-6 gap-3">
+        <div class="flex items-center justify-between mb-5">
             <div>
-                <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mb-0.5">Dashboard</p>
-                <h2 class="text-2xl font-black text-gray-900">${greeting}, ${name} 👋</h2>
-                <p class="text-sm text-gray-400 mt-0.5">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p>
+                <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Dashboard</p>
+                <h2 class="text-2xl font-black text-gray-900">Welcome back, ${escapeHtml(user.displayName || user.email?.split('@')[0] || 'there')} 👋</h2>
             </div>
-            <button onclick="openInvoiceHistory()"
-                class="shrink-0 flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-2 rounded-xl transition-all">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                History
+            <button onclick="openInvoiceHistory()" class="text-sm text-blue-600 font-semibold hover:underline flex items-center gap-1">
+                View all <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
             </button>
         </div>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6" id="dash-stats">
-            ${[1,2,3,4].map(()=>`<div class="bg-white rounded-2xl p-4 border border-gray-100 animate-pulse"><div class="w-8 h-8 bg-gray-100 rounded-xl mb-3"></div><div class="w-14 h-5 bg-gray-100 rounded mb-1.5"></div><div class="w-20 h-3 bg-gray-50 rounded"></div></div>`).join('')}
+        <div class="grid grid-cols-3 gap-4 mb-5" id="dash-stats">
+            ${[1,2,3].map(() => `<div class="bg-white rounded-2xl p-5 border border-gray-100 animate-pulse"><div class="w-8 h-8 bg-gray-100 rounded-xl mb-3"></div><div class="w-16 h-6 bg-gray-100 rounded mb-1"></div><div class="w-20 h-3 bg-gray-50 rounded"></div></div>`).join('')}
         </div>
-        <div id="dash-bottom" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
-                <div class="w-32 h-4 bg-gray-100 rounded mb-4"></div>
-                ${[1,2,3].map(()=>`<div class="flex justify-between mb-3"><div class="w-40 h-4 bg-gray-50 rounded"></div><div class="w-16 h-4 bg-gray-50 rounded"></div></div>`).join('')}
-            </div>
-            <div class="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
-                <div class="w-32 h-4 bg-gray-100 rounded mb-4"></div>
-                ${[1,2,3].map(()=>`<div class="w-full h-5 bg-gray-50 rounded mb-2"></div>`).join('')}
-            </div>
-        </div>
+        <div id="dash-recent"></div>
     </div>`;
 
-    // ── LOAD DATA ─────────────────────────────────────────────
-    const loadFn = window._fb_loadDashboardStats || window.loadDashboardStats;
-    const stats  = await loadFn?.();
-    const fmt    = (n,c) => { try{return new Intl.NumberFormat('en-BD',{style:'currency',currency:c||'BDT',minimumFractionDigits:0,notation:'compact'}).format(n);}catch(e){return n;} };
-    const fmt2   = (n,c) => { try{return new Intl.NumberFormat('en-BD',{style:'currency',currency:c||'BDT',minimumFractionDigits:0}).format(n);}catch(e){return n;} };
+    const stats = await window.loadDashboardStats?.();
 
-    // ── STAT CARDS ────────────────────────────────────────────
+    // Stats cards
     const statsEl = document.getElementById('dash-stats');
-    if (statsEl) {
-        if (!stats) {
-            statsEl.innerHTML = `<div class="col-span-4 text-center py-4 text-sm text-gray-400">Could not load stats — check your connection.</div>`;
-        } else {
-            const cur = stats.currency || 'BDT';
-            statsEl.innerHTML = `
-            <div class="bg-white rounded-2xl p-4 border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer" onclick="openInvoiceHistory()">
-                <div class="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
-                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                </div>
-                <p class="text-2xl font-black text-gray-900">${stats.total}</p>
-                <p class="text-xs text-gray-400 font-medium mt-0.5">Total Invoices</p>
+    if (statsEl && stats) {
+        const fmt = (n, cur) => { try { return new Intl.NumberFormat('en-BD',{style:'currency',currency:cur||'BDT',minimumFractionDigits:0,notation:'compact'}).format(n); } catch(e) { return n; }};
+        statsEl.innerHTML = `
+        <div class="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-all">
+            <div class="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center mb-3">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </div>
-            <div class="bg-white rounded-2xl p-4 border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                <div class="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center mb-3">
-                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </div>
-                <p class="text-2xl font-black text-gray-900">${fmt(stats.revenue,cur)}</p>
-                <p class="text-xs text-gray-400 font-medium mt-0.5">Total Revenue</p>
+            <p class="text-2xl font-black text-gray-900">${stats.total}</p>
+            <p class="text-xs text-gray-400 font-medium mt-0.5">Total Invoices</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-all">
+            <div class="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center mb-3">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
-            <div class="bg-white rounded-2xl p-4 border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                <div class="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center mb-3">
-                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                </div>
-                <p class="text-2xl font-black text-gray-900">${stats.thisMonth}</p>
-                <p class="text-xs text-gray-400 font-medium mt-0.5">This Month</p>
-                ${stats.monthRevenue > 0 ? `<p class="text-[11px] text-emerald-500 font-semibold mt-1">${fmt(stats.monthRevenue,cur)}</p>` : ''}
+            <p class="text-2xl font-black text-gray-900">${fmt(stats.revenue, stats.currency)}</p>
+            <p class="text-xs text-gray-400 font-medium mt-0.5">Total Revenue</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-all">
+            <div class="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center mb-3">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
             </div>
-            <div class="bg-white rounded-2xl p-4 border border-gray-100 hover:shadow-md hover:-translate-y-0.5 transition-all">
-                <div class="w-9 h-9 ${stats.totalUnpaid > 0 ? 'bg-red-50':'bg-gray-50'} rounded-xl flex items-center justify-center mb-3">
-                    <svg class="w-5 h-5 ${stats.totalUnpaid > 0 ? 'text-red-500':'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                </div>
-                <p class="text-2xl font-black ${stats.totalUnpaid > 0 ? 'text-red-500':'text-gray-900'}">${fmt(stats.totalUnpaid,cur)}</p>
-                <p class="text-xs text-gray-400 font-medium mt-0.5">Outstanding</p>
-            </div>`;
-        }
+            <p class="text-2xl font-black text-gray-900">${stats.thisMonth}</p>
+            <p class="text-xs text-gray-400 font-medium mt-0.5">This Month</p>
+        </div>`;
     }
 
-    // ── BOTTOM: Recent + Category ─────────────────────────────
-    const bottomEl = document.getElementById('dash-bottom');
-    if (!bottomEl || !stats) return;
-    const catEmoji   = c => ({'hospital':'🏥','grocery':'🛒','education':'🎓','restaurant':'🍽️','transport':'🚚'}[c]||'📄');
-    const styleBadge = s => ({'trendy':'bg-purple-100 text-purple-700','modern':'bg-blue-100 text-blue-700','minimal':'bg-gray-100 text-gray-700','old':'bg-amber-100 text-amber-700'}[s]||'bg-gray-100 text-gray-600');
-    const catColors  = {hospital:'bg-blue-500',grocery:'bg-green-500',education:'bg-indigo-500',restaurant:'bg-orange-500',transport:'bg-amber-500'};
-    const cur = stats.currency || 'BDT';
-
-    const recentHtml = stats.recent?.length
-        ? `<div class="space-y-1">${stats.recent.map(inv => {
-            const total   = (inv.items||[]).reduce((s,i)=>s+((i.qty||0)*(i.price||0)),0);
-            const dateStr = inv.savedAt?.toDate ? inv.savedAt.toDate().toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : '—';
-            return `<div class="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl hover:bg-blue-50 transition-all cursor-pointer group"
-                onclick="if(window.loadInvoiceIntoEditor) window.loadInvoiceIntoEditor('${inv.id||''}')">
-                <div class="flex items-center gap-2 min-w-0">
-                    <span class="text-base">${catEmoji(inv.category)}</span>
-                    <div class="min-w-0">
-                        <p class="text-sm font-semibold text-gray-800 truncate group-hover:text-blue-700">${escapeHtml(inv.orgName||'Unnamed')}</p>
-                        <p class="text-[11px] text-gray-400">#${escapeHtml(inv.invoiceNo||'—')} · ${dateStr}</p>
+    // Recent invoices
+    const recentEl = document.getElementById('dash-recent');
+    if (recentEl && stats?.recent?.length) {
+        const styleBadge = s => ({'trendy':'bg-purple-100 text-purple-700','modern':'bg-blue-100 text-blue-700','minimal':'bg-gray-100 text-gray-700'}[s]||'bg-amber-100 text-amber-700');
+        const fmt2 = (n, cur) => { try { return new Intl.NumberFormat('en-BD',{style:'currency',currency:cur||'BDT',minimumFractionDigits:0}).format(n); } catch(e) { return n; }};
+        recentEl.innerHTML = `
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Recent Invoices</p>
+        <div class="space-y-2">
+            ${stats.recent.map(inv => {
+                const total = (inv.items||[]).reduce((s,i)=>s+(i.qty*i.price),0);
+                const dateStr = inv.savedAt?.toDate ? inv.savedAt.toDate().toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : '—';
+                return `
+                <div class="bg-white rounded-xl px-4 py-3 border border-gray-100 flex items-center justify-between gap-3 hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer" onclick="loadInvoiceIntoEditor && loadInvoiceIntoEditor('${inv.id||''}')">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${styleBadge(inv.style)}">${inv.style||'—'}</span>
+                        <span class="text-sm font-semibold text-gray-800 truncate">${escapeHtml(inv.orgName||'Unnamed')}</span>
                     </div>
-                </div>
-                <div class="text-right shrink-0">
-                    <p class="text-sm font-bold text-gray-900">${fmt2(total,inv.currency)}</p>
-                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full ${styleBadge(inv.style)}">${inv.style||'—'}</span>
-                </div>
-            </div>`;}).join('')}</div>`
-        : `<div class="flex flex-col items-center justify-center py-8 text-center">
-            <div class="text-4xl mb-2">📄</div>
-            <p class="text-sm font-semibold text-gray-400">No invoices yet</p>
-            <p class="text-xs text-gray-300 mt-0.5">Generate one and hit Save!</p>
-           </div>`;
-
-    const catEntries  = Object.entries(stats.catCount||{}).sort((a,b)=>b[1]-a[1]);
-    const totalForPct = stats.total || 1;
-    const catHtml = catEntries.length
-        ? catEntries.map(([cat,count]) => {
-            const pct = Math.round((count/totalForPct)*100);
-            return `<div class="mb-3">
-                <div class="flex items-center justify-between mb-1">
-                    <span class="text-sm font-medium text-gray-700">${catEmoji(cat)} <span class="capitalize">${cat}</span></span>
-                    <span class="text-xs font-bold text-gray-500">${count} <span class="text-gray-300">(${pct}%)</span></span>
-                </div>
-                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div class="h-full ${catColors[cat]||'bg-blue-400'} rounded-full" style="width:${pct}%"></div>
-                </div>
-            </div>`;}).join('')
-        : `<p class="text-sm text-gray-300 text-center py-6">No data yet</p>`;
-
-    bottomEl.innerHTML = `
-    <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <div class="flex items-center justify-between mb-4">
-            <p class="text-xs font-black text-gray-400 uppercase tracking-widest">Recent Invoices</p>
-            <button onclick="openInvoiceHistory()" class="text-xs text-blue-600 font-semibold hover:underline">View all</button>
-        </div>
-        ${recentHtml}
-    </div>
-    <div class="bg-white rounded-2xl border border-gray-100 p-5">
-        <p class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">By Category</p>
-        ${catHtml}
-        ${catEntries.length ? `<div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
-            <span class="text-xs text-gray-400">Top category</span>
-            <span class="text-xs font-bold text-gray-700">${catEmoji(stats.topCategory)} ${stats.topCategory}</span>
-        </div>` : ''}
-    </div>`;
+                    <div class="flex items-center gap-3 shrink-0">
+                        <span class="text-xs text-gray-400">${dateStr}</span>
+                        <span class="text-sm font-bold text-gray-900">${fmt2(total,inv.currency)}</span>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    } else if (recentEl && stats) {
+        recentEl.innerHTML = `<p class="text-sm text-gray-400 text-center py-4">No invoices saved yet — hit the green Save button in the editor!</p>`;
+    }
 };
-
 
 // ── CUSTOMER MANAGEMENT MODAL ─────────────────────────────────
 window.openCustomerManager = async function() {
@@ -1876,20 +1807,18 @@ window.clearBusinessProfile  = function() {
         clearBusinessProfile();
     }
 };
-// ── Firebase lazy wrappers ──────────────────────────────────
-window.saveInvoiceToHistory  = function(...a) { if(window._fb_saveInvoiceToHistory) return window._fb_saveInvoiceToHistory(...a); showConversionPopup('save'); };
-window.openInvoiceHistory    = function(...a) { if(window._fb_openInvoiceHistory)   return window._fb_openInvoiceHistory(...a);   if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
-window.openTeamManager       = function(...a) { if(window._fb_openTeamManager)       return window._fb_openTeamManager(...a);       if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
-window.openCustomerManager   = function(...a) { if(window._fb_openCustomerManager)   return window._fb_openCustomerManager(...a); };
-window.toggleUserMenu        = function(...a) { if(window._fb_toggleUserMenu)        return window._fb_toggleUserMenu(...a); };
-window.authSignOut           = function(...a) { if(window._fb_authSignOut)           return window._fb_authSignOut(...a); };
-window.authShowTab           = function(...a) { if(window._fb_authShowTab)           return window._fb_authShowTab(...a); };
-window.authGoogleSignIn      = function(...a) { if(window._fb_authGoogleSignIn)      return window._fb_authGoogleSignIn(...a); };
-window.authEmailLogin        = function(...a) { if(window._fb_authEmailLogin)        return window._fb_authEmailLogin(...a); };
-window.authEmailRegister     = function(...a) { if(window._fb_authEmailRegister)     return window._fb_authEmailRegister(...a); };
-window.authForgotPassword    = function(...a) { if(window._fb_authForgotPassword)    return window._fb_authForgotPassword(...a); };
-window.authSendOTP           = function(...a) { if(window._fb_authSendOTP)           return window._fb_authSendOTP(...a); };
-window.authVerifyOTP         = function(...a) { if(window._fb_authVerifyOTP)         return window._fb_authVerifyOTP(...a); };
-window.renderDashboard       = function(...a) { if(window._fb_renderDashboard)       return window._fb_renderDashboard(...a); };
-window.closeConversionPopup  = function()    { document.getElementById('conversion-popup')?.remove(); };
-window.guardedSaveInvoice    = guardedSaveInvoice;
+// ── Lazy wrappers for firebase.js functions only ────────────
+// (functions already defined in app-bundle.js above are NOT listed here)
+window.saveInvoiceToHistory = function(...a) { if(window._fb_saveInvoiceToHistory) return window._fb_saveInvoiceToHistory(...a); showConversionPopup('save'); };
+window.openInvoiceHistory   = function(...a) { if(window._fb_openInvoiceHistory)   return window._fb_openInvoiceHistory(...a);   if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
+window.openTeamManager      = function(...a) { if(window._fb_openTeamManager)       return window._fb_openTeamManager(...a);       if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
+window.toggleUserMenu       = function(...a) { if(window._fb_toggleUserMenu)        return window._fb_toggleUserMenu(...a); };
+window.authSignOut          = function(...a) { if(window._fb_authSignOut)           return window._fb_authSignOut(...a); };
+window.authShowTab          = function(...a) { if(window._fb_authShowTab)           return window._fb_authShowTab(...a); };
+window.authGoogleSignIn     = function(...a) { if(window._fb_authGoogleSignIn)      return window._fb_authGoogleSignIn(...a); };
+window.authEmailLogin       = function(...a) { if(window._fb_authEmailLogin)        return window._fb_authEmailLogin(...a); };
+window.authEmailRegister    = function(...a) { if(window._fb_authEmailRegister)     return window._fb_authEmailRegister(...a); };
+window.authForgotPassword   = function(...a) { if(window._fb_authForgotPassword)    return window._fb_authForgotPassword(...a); };
+window.authSendOTP          = function(...a) { if(window._fb_authSendOTP)           return window._fb_authSendOTP(...a); };
+window.authVerifyOTP        = function(...a) { if(window._fb_authVerifyOTP)         return window._fb_authVerifyOTP(...a); };
+window.guardedSaveInvoice   = guardedSaveInvoice;
