@@ -75,3 +75,55 @@ body {
 @media (min-width: 769px) and (max-width: 1024px) {
     #invoice-preview-content { transform: scale(0.85); }
 }
+
+/* ── Mobile invoice & scroll fixes ──────────────────────────── */
+@media (max-width: 768px) {
+    /* Allow editor page to scroll naturally on mobile */
+    #view-editor {
+        height: auto !important;
+        min-height: 100%;
+        overflow: visible !important;
+    }
+    #editor-left-pane {
+        overflow: visible !important;
+        height: auto !important;
+    }
+    /* Invoice export target — scale down to fit mobile screen */
+    #export-target {
+        transform-origin: top left;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-height: auto !important;
+        overflow: hidden !important;
+    }
+    /* Prevent decorative absolute elements from bleeding outside */
+    #export-target > .absolute {
+        display: none !important;
+    }
+    /* Fix font sizes in invoice on small screens */
+    #export-target h1 {
+        font-size: clamp(14px, 4vw, 28px) !important;
+        line-height: 1.2 !important;
+    }
+    #export-target .text-4xl {
+        font-size: clamp(18px, 5vw, 32px) !important;
+    }
+    /* Prevent currency text overlapping amounts */
+    #export-target td, #export-target .flex > span {
+        word-break: break-word;
+        min-width: 0;
+    }
+    /* Mobile tab strip stays fixed at top of editor */
+    #mobile-tab-strip {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+    }
+}
+
+/* Fix currency symbol not overlapping amount text */
+#export-target .flex.justify-between > span:last-child {
+    text-align: right;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
