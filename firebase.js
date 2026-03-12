@@ -65,7 +65,7 @@ onAuthStateChanged(auth, async (user) => {
         updateNavUI(user);
         revealNavBtns();
         // Refresh dashboard if visible
-        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 50);
+        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 100);
     } else {
         window._currentUser = null;
         window._businessProfile = null;
@@ -73,7 +73,7 @@ onAuthStateChanged(auth, async (user) => {
         updateNavForGuest();
         hideNavBtns();
         // Refresh dashboard to show guest state
-        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 50);
+        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 100);
     }
 });
 
@@ -254,15 +254,15 @@ window.loadDashboardStats = async function() {
             const d = inv.savedAt.toDate();
             return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
         });
-        const totalRevenue  = invoices.reduce((s,inv)=>s+getTotal(inv),0);
-        const monthRevenue  = thisMonthInvs.reduce((s,inv)=>s+getTotal(inv),0);
-        const totalPaid     = invoices.reduce((s,inv)=>s+(inv.paid||0),0);
-        const totalUnpaid   = Math.max(0, totalRevenue - totalPaid);
-        const currency      = invoices[0]?.currency || 'BDT';
-        const catCount      = {};
+        const totalRevenue = invoices.reduce((s,inv)=>s+getTotal(inv),0);
+        const monthRevenue = thisMonthInvs.reduce((s,inv)=>s+getTotal(inv),0);
+        const totalPaid    = invoices.reduce((s,inv)=>s+(inv.paid||0),0);
+        const totalUnpaid  = Math.max(0, totalRevenue - totalPaid);
+        const currency     = invoices[0]?.currency || 'BDT';
+        const catCount     = {};
         invoices.forEach(inv => { const c=inv.category||'other'; catCount[c]=(catCount[c]||0)+1; });
-        const topCategory   = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
-        const sorted        = [...invoices].sort((a,b)=>(b.savedAt?.seconds||0)-(a.savedAt?.seconds||0));
+        const topCategory  = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+        const sorted       = [...invoices].sort((a,b)=>(b.savedAt?.seconds||0)-(a.savedAt?.seconds||0));
         return { total:invoices.length, thisMonth:thisMonthInvs.length, revenue:totalRevenue,
                  monthRevenue, totalPaid, totalUnpaid, topCategory, currency, catCount, recent:sorted.slice(0,5) };
     } catch(e) { console.warn('loadDashboardStats:', e); return null; }
@@ -284,10 +284,12 @@ window.saveInvoiceToHistory = async function() {
     if (!user) return toast('Please sign in first', 'error');
     if (!window.state) return;
     try {
+        // Ensure workspace exists first (fixes new account race condition)
         await ensureUserDoc(user);
         const wsId = await getWorkspaceId();
         if (!wsId) return toast('Workspace not found — sign out and back in.', 'error');
         const d = window.state.invoiceData;
+        // DO NOT spread invoiceData — logo is base64 and can exceed Firestore 1MB limit
         const inv = {
             orgName:      d.orgName      || '',
             address:      d.address      || '',
@@ -297,13 +299,18 @@ window.saveInvoiceToHistory = async function() {
             invoiceNo:    d.invoiceNo    || '',
             date:         d.date         || '',
             customerName: d.customerName || '',
-            items:        (d.items||[]).map(i=>({id:i.id||0,desc:i.desc||'',qty:i.qty||1,price:i.price||0})),
+            items:        (d.items || []).map(i => ({
+                id:    i.id    || 0,
+                desc:  i.desc  || '',
+                qty:   i.qty   || 1,
+                price: i.price || 0
+            })),
             taxRate:      d.taxRate      ?? 0,
             discountRate: d.discountRate ?? 0,
             paid:         d.paid         ?? 0,
-            templateId:   window.state.templateId  || '',
-            category:     window.state.category    || '',
-            style:        window.state.style       || '',
+            templateId:   window.state.templateId || '',
+            category:     window.state.category   || '',
+            style:        window.state.style      || '',
             savedBy:      user.uid,
             savedByName:  user.displayName || user.email || 'User',
             savedAt:      serverTimestamp(),
@@ -313,10 +320,12 @@ window.saveInvoiceToHistory = async function() {
         toast('✓ Invoice saved to history!', 'success');
         setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 300);
     } catch(e) {
-        console.error('saveInvoice:', e);
-        toast(e.code === 'permission-denied'
-            ? 'Permission denied — deploy Firestore rules from Firebase Console.'
-            : 'Save failed: ' + e.message, 'error');
+        console.error('saveInvoiceToHistory error:', e.code, e.message);
+        if (e.code === 'permission-denied') {
+            toast('Permission denied — please deploy Firestore rules from Firebase Console.', 'error');
+        } else {
+            toast('Save failed: ' + e.message, 'error');
+        }
     }
 };
 
@@ -785,8 +794,7 @@ function setBtnLoading(on) {
     });
 }
 
-// ── Bridge assignments (firebase.js is ES module, runs AFTER app-bundle.js)
-// app-bundle lazy wrappers check window._fb_* at call time to get real functions
+// ── Bridge assignments (firebase.js ES module runs AFTER app-bundle.js)
 window._fb_saveInvoiceToHistory = window.saveInvoiceToHistory;
 window._fb_openInvoiceHistory   = window.openInvoiceHistory;
 window._fb_openTeamManager      = window.openTeamManager;

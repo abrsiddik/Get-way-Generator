@@ -1545,7 +1545,7 @@ window.renderDashboard = async function() {
     if (!container) return;
     const user = window._currentUser;
 
-    // ── GUEST STATE ───────────────────────────────────────────
+    // ── GUEST ─────────────────────────────────────────────────
     if (!user) {
         container.innerHTML = `
         <div class="bg-gradient-to-r from-blue-600 to-violet-600 rounded-3xl p-7 mb-8 text-white relative overflow-hidden">
@@ -1553,7 +1553,7 @@ window.renderDashboard = async function() {
             <div class="relative">
                 <p class="text-blue-200 text-xs font-bold uppercase tracking-widest mb-1">👋 Welcome</p>
                 <h2 class="text-2xl font-black mb-1">You're in Guest Mode</h2>
-                <p class="text-blue-100 text-sm mb-5">Generate & export invoices freely. Sign in to unlock invoice history, business profiles, team workspace, and watermark-free exports.</p>
+                <p class="text-blue-100 text-sm mb-5">Generate & export invoices freely. Sign in to save history, remove watermarks, and unlock all features.</p>
                 <div class="flex gap-3 flex-wrap">
                     <button onclick="if(window.showAuthModal) window.showAuthModal({tab:'register'})"
                         class="bg-white text-blue-700 font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-blue-50 transition-all active:scale-95 shadow-md">
@@ -1606,15 +1606,14 @@ window.renderDashboard = async function() {
     // ── LOAD DATA ─────────────────────────────────────────────
     const loadFn = window._fb_loadDashboardStats || window.loadDashboardStats;
     const stats  = await loadFn?.();
-
-    const fmt  = (n,c) => { try{return new Intl.NumberFormat('en-BD',{style:'currency',currency:c||'BDT',minimumFractionDigits:0,notation:'compact'}).format(n);}catch(e){return n;} };
-    const fmt2 = (n,c) => { try{return new Intl.NumberFormat('en-BD',{style:'currency',currency:c||'BDT',minimumFractionDigits:0}).format(n);}catch(e){return n;} };
+    const fmt    = (n,c) => { try{return new Intl.NumberFormat('en-BD',{style:'currency',currency:c||'BDT',minimumFractionDigits:0,notation:'compact'}).format(n);}catch(e){return n;} };
+    const fmt2   = (n,c) => { try{return new Intl.NumberFormat('en-BD',{style:'currency',currency:c||'BDT',minimumFractionDigits:0}).format(n);}catch(e){return n;} };
 
     // ── STAT CARDS ────────────────────────────────────────────
     const statsEl = document.getElementById('dash-stats');
     if (statsEl) {
         if (!stats) {
-            statsEl.innerHTML = `<div class="col-span-4 text-center py-4 text-sm text-gray-400">Could not load stats.</div>`;
+            statsEl.innerHTML = `<div class="col-span-4 text-center py-4 text-sm text-gray-400">Could not load stats — check your connection.</div>`;
         } else {
             const cur = stats.currency || 'BDT';
             statsEl.innerHTML = `
@@ -1650,11 +1649,10 @@ window.renderDashboard = async function() {
         }
     }
 
-    // ── BOTTOM: Recent Invoices + Category Breakdown ──────────
+    // ── BOTTOM: Recent + Category ─────────────────────────────
     const bottomEl = document.getElementById('dash-bottom');
     if (!bottomEl || !stats) return;
-
-    const catEmoji = c => ({'hospital':'🏥','grocery':'🛒','education':'🎓','restaurant':'🍽️','transport':'🚚'}[c]||'📄');
+    const catEmoji   = c => ({'hospital':'🏥','grocery':'🛒','education':'🎓','restaurant':'🍽️','transport':'🚚'}[c]||'📄');
     const styleBadge = s => ({'trendy':'bg-purple-100 text-purple-700','modern':'bg-blue-100 text-blue-700','minimal':'bg-gray-100 text-gray-700','old':'bg-amber-100 text-amber-700'}[s]||'bg-gray-100 text-gray-600');
     const catColors  = {hospital:'bg-blue-500',grocery:'bg-green-500',education:'bg-indigo-500',restaurant:'bg-orange-500',transport:'bg-amber-500'};
     const cur = stats.currency || 'BDT';
@@ -1680,7 +1678,7 @@ window.renderDashboard = async function() {
         : `<div class="flex flex-col items-center justify-center py-8 text-center">
             <div class="text-4xl mb-2">📄</div>
             <p class="text-sm font-semibold text-gray-400">No invoices yet</p>
-            <p class="text-xs text-gray-300 mt-0.5">Generate one and hit the Save button!</p>
+            <p class="text-xs text-gray-300 mt-0.5">Generate one and hit Save!</p>
            </div>`;
 
     const catEntries  = Object.entries(stats.catCount||{}).sort((a,b)=>b[1]-a[1]);
@@ -1716,6 +1714,7 @@ window.renderDashboard = async function() {
         </div>` : ''}
     </div>`;
 };
+
 
 // ── CUSTOMER MANAGEMENT MODAL ─────────────────────────────────
 window.openCustomerManager = async function() {
@@ -1877,7 +1876,7 @@ window.clearBusinessProfile  = function() {
         clearBusinessProfile();
     }
 };
-// ── Firebase function bridges (lazy wrappers — never use || function(){} here)
+// ── Firebase lazy wrappers — always call _fb_* at runtime, never block with || function(){}
 window.saveInvoiceToHistory  = function(...a) { if(window._fb_saveInvoiceToHistory) return window._fb_saveInvoiceToHistory(...a); showConversionPopup('save'); };
 window.openInvoiceHistory    = function(...a) { if(window._fb_openInvoiceHistory)   return window._fb_openInvoiceHistory(...a);   if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
 window.openTeamManager       = function(...a) { if(window._fb_openTeamManager)       return window._fb_openTeamManager(...a);       if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
