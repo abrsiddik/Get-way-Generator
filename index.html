@@ -26,7 +26,7 @@
         .auth-bg { background: linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 45%,#7c3aed 100%) }
         #app-root { display:flex; flex-direction:column; height:100vh }
         /* Auth modal hidden by default — JS shows it only when needed */
-        #auth-modal { display:none }
+        #auth-modal { display:none !important }
     </style>
 </head>
 <body class="text-slate-800">
@@ -206,8 +206,8 @@
     <main class="flex-1 overflow-auto relative">
         
         <!-- View 1: Categories -->
-        <div id="view-categories" class="view-section min-h-full overflow-y-auto p-6 md:p-12">
-            <div class="max-w-5xl mx-auto">
+        <div id="view-categories" class="view-section h-full overflow-y-auto p-6 md:p-12">
+            <div class="max-w-5xl mx-auto fade-in">
 
                 <!-- ── DASHBOARD (inline, above categories) ── -->
                 <div id="dashboard-section"></div>
@@ -373,7 +373,7 @@
         </div>
 
         <!-- View 4: The Editor -->
-        <div id="view-editor" class="view-section hidden h-full flex flex-col bg-slate-50">
+        <div id="view-editor" class="view-section hidden min-h-full flex flex-col bg-slate-50">
 
             <!-- Mobile Tab Bar (visible only on small screens) -->
             <div class="flex md:hidden border-b border-gray-200 bg-white z-30 shrink-0">
@@ -385,9 +385,9 @@
                 </button>
             </div>
 
-            <div class="flex flex-1 overflow-hidden flex-col md:flex-row">
+            <div class="flex flex-1 overflow-visible flex-col md:flex-row">
             <!-- Left Pane: Form Inputs -->
-            <div id="editor-left-pane" class="w-full md:w-[400px] lg:w-[450px] bg-white border-r border-gray-200 overflow-y-auto shadow-2xl z-20 flex flex-col shrink-0 fade-in relative">
+            <div id="editor-left-pane" class="w-full md:w-[400px] lg:w-[450px] bg-white border-r border-gray-200 overflow-visible md:overflow-y-auto shadow-2xl z-20 flex flex-col shrink-0 fade-in relative">
                 <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-white/90 backdrop-blur sticky top-0 z-30">
                     <div>
                         <h2 class="font-bold text-gray-900 text-lg flex items-center gap-2">
