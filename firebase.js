@@ -65,7 +65,7 @@ onAuthStateChanged(auth, async (user) => {
         updateNavUI(user);
         revealNavBtns();
         // Refresh dashboard if visible
-        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 100);
+        if (window.renderDashboard) window.renderDashboard();
     } else {
         window._currentUser = null;
         window._businessProfile = null;
@@ -73,7 +73,7 @@ onAuthStateChanged(auth, async (user) => {
         updateNavForGuest();
         hideNavBtns();
         // Refresh dashboard to show guest state
-        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 100);
+        if (window.renderDashboard) window.renderDashboard();
     }
 });
 
@@ -137,27 +137,34 @@ function revealNavBtns() {
 
 // ── User document (created on first sign-in) ─────────────────
 async function ensureUserDoc(user) {
-    const ref  = doc(db, 'users', user.uid);
-    const snap = await getDoc(ref);
-    // Use pending name set during registration if displayName not propagated yet
+    const userRef = doc(db, 'users', user.uid);
+    const wsRef   = doc(db, 'workspaces', user.uid);
     const displayName = user.displayName || window._pendingDisplayName || '';
-    if (!snap.exists()) {
-        await setDoc(ref, {
-            uid: user.uid,
+
+    const [userSnap, wsSnap] = await Promise.all([getDoc(userRef), getDoc(wsRef)]);
+
+    // Create user doc if missing
+    if (!userSnap.exists()) {
+        await setDoc(userRef, {
+            uid:         user.uid,
             displayName,
-            email: user.email || '',
-            photoURL: user.photoURL || '',
-            createdAt: serverTimestamp(),
+            email:       user.email || '',
+            photoURL:    user.photoURL || '',
+            createdAt:   serverTimestamp(),
             workspaceId: user.uid
         });
-        // personal workspace
-        await setDoc(doc(db, 'workspaces', user.uid), {
+    }
+
+    // ALWAYS create workspace if missing — this is the save permission fix
+    // A user doc can exist without a workspace doc (e.g. after data loss, first save)
+    if (!wsSnap.exists()) {
+        await setDoc(wsRef, {
             name:      (displayName || 'My') + "'s Workspace",
             ownerId:   user.uid,
             memberIds: [user.uid],
             editorIds: [user.uid],
             adminIds:  [user.uid],
-            members: [{ uid: user.uid, email: user.email||'', name: displayName, role:'admin' }],
+            members:   [{ uid: user.uid, email: user.email||'', name: displayName, role: 'admin' }],
             createdAt: serverTimestamp()
         });
     }
@@ -239,34 +246,30 @@ window.deleteCustomer = async function(customerId) {
 
 // ── Dashboard Stats ───────────────────────────────────────────
 window.loadDashboardStats = async function() {
-    const user = window._currentUser;
-    if (!user) return null;
+    const wsId = await getWorkspaceId();
+    if (!wsId) return null;
     try {
-        await ensureUserDoc(user);
-        const wsId = await getWorkspaceId();
-        if (!wsId) return null;
-        const snap     = await getDocs(collection(db, 'workspaces', wsId, 'invoices'));
-        const invoices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const now      = new Date();
-        const getTotal = inv => (inv.items||[]).reduce((s,i)=>s+((i.qty||0)*(i.price||0)),0);
-        const thisMonthInvs = invoices.filter(inv => {
+        const snap  = await getDocs(collection(db, 'workspaces', wsId, 'invoices'));
+        const invoices = snap.docs.map(d => d.data());
+        const now   = new Date();
+        const thisMonth = invoices.filter(inv => {
             if (!inv.savedAt?.toDate) return false;
             const d = inv.savedAt.toDate();
-            return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
         });
-        const totalRevenue = invoices.reduce((s,inv)=>s+getTotal(inv),0);
-        const monthRevenue = thisMonthInvs.reduce((s,inv)=>s+getTotal(inv),0);
-        const totalPaid    = invoices.reduce((s,inv)=>s+(inv.paid||0),0);
-        const totalUnpaid  = Math.max(0, totalRevenue - totalPaid);
-        const currency     = invoices[0]?.currency || 'BDT';
-        const catCount     = {};
-        invoices.forEach(inv => { const c=inv.category||'other'; catCount[c]=(catCount[c]||0)+1; });
-        const topCategory  = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
-        const sorted       = [...invoices].sort((a,b)=>(b.savedAt?.seconds||0)-(a.savedAt?.seconds||0));
-        return { total:invoices.length, thisMonth:thisMonthInvs.length,
-                 revenue:totalRevenue, monthRevenue, totalPaid, totalUnpaid,
-                 topCategory, currency, catCount, recent:sorted.slice(0,5) };
-    } catch(e) { console.warn('loadDashboardStats:', e); return null; }
+        const totalRevenue = invoices.reduce((s, inv) =>
+            s + (inv.items||[]).reduce((si, i) => si + (i.qty * i.price), 0), 0);
+        const currency = invoices[0]?.currency || 'BDT';
+        return {
+            total:       invoices.length,
+            thisMonth:   thisMonth.length,
+            revenue:     totalRevenue,
+            currency,
+            recent:      invoices
+                .sort((a,b) => (b.savedAt?.seconds||0) - (a.savedAt?.seconds||0))
+                .slice(0, 5)
+        };
+    } catch(e) { return null; }
 };
 
 // ── Expose showAuthModal globally so app-bundle can call it ───
@@ -285,13 +288,10 @@ window.saveInvoiceToHistory = async function() {
     if (!user) return toast('Please sign in first', 'error');
     if (!window.state) return;
     try {
-        // Must run first — creates workspace doc with editorIds for new accounts
-        await ensureUserDoc(user);
+        await ensureUserDoc(user);  // creates workspace + editorIds if missing
         const wsId = await getWorkspaceId();
-        if (!wsId) return toast('Workspace not ready — please sign out and back in.', 'error');
-
+        if (!wsId) return toast('Workspace not ready — sign out and back in.', 'error');
         const d = window.state.invoiceData;
-        // NEVER spread invoiceData — logo is base64 and exceeds Firestore 1MB doc limit
         const inv = {
             orgName:      d.orgName      || '',
             address:      d.address      || '',
@@ -301,7 +301,7 @@ window.saveInvoiceToHistory = async function() {
             invoiceNo:    d.invoiceNo    || '',
             date:         d.date         || '',
             customerName: d.customerName || '',
-            items: (d.items || []).map(i => ({
+            items: (d.items||[]).map(i => ({
                 id:    i.id    || 0,
                 desc:  i.desc  || '',
                 qty:   Number(i.qty)   || 1,
@@ -319,13 +319,11 @@ window.saveInvoiceToHistory = async function() {
             workspaceId:  wsId
         };
         await addDoc(collection(db, 'workspaces', wsId, 'invoices'), inv);
-        toast('✓ Invoice saved to history!', 'success');
+        toast('✓ Invoice saved!', 'success');
         setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 400);
     } catch(e) {
         console.error('saveInvoice error:', e.code, e.message);
-        toast(e.code === 'permission-denied'
-            ? 'Save failed — open browser console (F12) and check the exact Firestore error.'
-            : 'Save failed: ' + e.message, 'error');
+        toast('Save failed: ' + e.message, 'error');
     }
 };
 
