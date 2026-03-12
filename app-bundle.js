@@ -1876,7 +1876,7 @@ window.clearBusinessProfile  = function() {
         clearBusinessProfile();
     }
 };
-// ── Firebase lazy wrappers — always call _fb_* at runtime, never block with || function(){}
+// ── Firebase lazy wrappers ──────────────────────────────────
 window.saveInvoiceToHistory  = function(...a) { if(window._fb_saveInvoiceToHistory) return window._fb_saveInvoiceToHistory(...a); showConversionPopup('save'); };
 window.openInvoiceHistory    = function(...a) { if(window._fb_openInvoiceHistory)   return window._fb_openInvoiceHistory(...a);   if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
 window.openTeamManager       = function(...a) { if(window._fb_openTeamManager)       return window._fb_openTeamManager(...a);       if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
