@@ -88,13 +88,11 @@ body {
         overflow: visible !important;
         height: auto !important;
     }
-    /* Invoice export target — scale down to fit mobile screen */
+    /* Invoice export target — DO NOT scale or constrain on mobile.
+       lockToA4() in JS handles forcing A4 size before html2canvas capture.
+       The preview wrapper (#invoice-preview-content) handles visual scaling. */
     #export-target {
         transform-origin: top left;
-        width: 100% !important;
-        max-width: 100% !important;
-        min-height: auto !important;
-        overflow: hidden !important;
     }
     /* Prevent decorative absolute elements from bleeding outside */
     #export-target > .absolute {
