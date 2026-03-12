@@ -1425,115 +1425,58 @@ function injectWatermark(element) {
     return () => { wm.remove(); element.style.position = prev; };
 }
 
-// ── Creates a fixed-size A4 off-screen clone for export ──────
-// This ensures PDF/PNG output is always identical on mobile and desktop
-function createExportClone() {
-    const source = document.getElementById('export-target');
-    if (!source) return null;
-
-    const tmpl = templateDatabase.find(t => t.id === state.templateId);
-    const isOldStyle = tmpl && tmpl.style === 'old';
-
-    // Wrapper: positioned off-screen, fixed pixel width matching A4 or thermal
-    const wrapper = document.createElement('div');
-    wrapper.id = 'export-clone-wrapper';
-    wrapper.style.cssText = [
-        'position:fixed',
-        'top:0',
-        'left:-9999px',
-        isOldStyle ? 'width:320px' : 'width:794px',
-        'z-index:-1',
-        'background:white',
-        'overflow:visible',
-        'pointer-events:none'
-    ].join(';');
-
-    // Deep clone the invoice element
-    const clone = source.cloneNode(true);
-    clone.removeAttribute('id'); // avoid duplicate IDs
-
-    // Force A4 dimensions — override any responsive classes
-    clone.style.cssText = [
-        isOldStyle ? 'width:320px!important;max-width:320px!important' : 'width:794px!important;max-width:794px!important;min-height:1123px!important',
-        'margin:0!important',
-        'border-radius:0!important',
-        'transform:none!important',
-        'font-size:14px'
-    ].join(';');
-
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
-    return { wrapper, clone };
-}
-
 function exportToPDF() {
+    const element = document.getElementById('export-target');
     const btn = document.getElementById('btn-export-pdf');
     const tmpl = templateDatabase.find(t => t.id === state.templateId);
-    if (!document.getElementById('export-target')) return;
+    if (!element) return;
 
-    const { wrapper, clone } = createExportClone();
     const isGuest = !window._currentUser;
     let removeWatermark = () => {};
-    if (isGuest) removeWatermark = injectWatermark(clone);
-
-    const cleanup = () => { removeWatermark(); wrapper.remove(); };
+    if (isGuest) removeWatermark = injectWatermark(element);
 
     let pdfFormat = 'a4';
     if (tmpl && tmpl.style === 'old') pdfFormat = [80, 200];
-
     const opt = {
         margin: 0,
         filename: `GetWayGenerator_${state.invoiceData.invoiceNo || 'invoice'}.pdf`,
         image: { type: 'jpeg', quality: 1 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            width:  tmpl?.style === 'old' ? 320 : 794,
-            windowWidth: tmpl?.style === 'old' ? 320 : 794
-        },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: pdfFormat, orientation: 'portrait' }
     };
-
     if (window.html2pdf) {
         setExportLoading(btn, true);
-        window.html2pdf().set(opt).from(clone).save()
-            .then(() => { setExportLoading(btn, false); cleanup(); if (isGuest) showConversionPopup('pdf'); })
-            .catch(() => { setExportLoading(btn, false); cleanup(); });
+        window.html2pdf().set(opt).from(element).save()
+            .then(() => {
+                setExportLoading(btn, false);
+                removeWatermark();
+                if (isGuest) showConversionPopup('pdf');
+            })
+            .catch(() => { setExportLoading(btn, false); removeWatermark(); });
     }
 }
 
 function exportToPNG() {
+    const element = document.getElementById('export-target');
     const btn = document.getElementById('btn-export-png');
-    if (!window.html2canvas || !document.getElementById('export-target')) return;
+    if (!window.html2canvas || !element) return;
 
-    const { wrapper, clone } = createExportClone();
-    const tmpl = templateDatabase.find(t => t.id === state.templateId);
     const isGuest = !window._currentUser;
     let removeWatermark = () => {};
-    if (isGuest) removeWatermark = injectWatermark(clone);
-
-    const cleanup = () => { removeWatermark(); wrapper.remove(); };
-    const exportW = tmpl?.style === 'old' ? 320 : 794;
+    if (isGuest) removeWatermark = injectWatermark(element);
 
     setExportLoading(btn, true);
-    window.html2canvas(clone, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        width: exportW,
-        windowWidth: exportW
-    })
-    .then(canvas => {
-        const link = document.createElement('a');
-        link.download = `GetWayGenerator_${state.invoiceData.invoiceNo || 'invoice'}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        setExportLoading(btn, false);
-        cleanup();
-        if (isGuest) showConversionPopup('png');
-    })
-    .catch(() => { setExportLoading(btn, false); cleanup(); });
+    window.html2canvas(element, { scale: 3, useCORS: true, backgroundColor: '#ffffff' })
+        .then(canvas => {
+            const link = document.createElement('a');
+            link.download = `GetWayGenerator_${state.invoiceData.invoiceNo || 'invoice'}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            setExportLoading(btn, false);
+            removeWatermark();
+            if (isGuest) showConversionPopup('png');
+        })
+        .catch(() => { setExportLoading(btn, false); removeWatermark(); });
 }
 
 // ── CONVERSION POPUP (guest → register) ──────────────────────
