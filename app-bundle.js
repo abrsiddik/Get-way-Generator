@@ -186,17 +186,25 @@ const PROFILE_KEY = 'gateway_business_profile';
 function saveBusinessProfile() {
     try {
         const d = state.invoiceData;
+        // Save ALL invoice data so full slip can be restored
         const profile = {
-            orgName:  d.orgName,
-            address:  d.address,
-            phone:    d.phone,
-            email:    d.email,
-            currency: d.currency,
-            logo:     d.logo || ''
+            orgName:      d.orgName,
+            address:      d.address,
+            phone:        d.phone,
+            email:        d.email,
+            currency:     d.currency,
+            logo:         d.logo || '',
+            invoiceNo:    d.invoiceNo,
+            date:         d.date,
+            customerName: d.customerName,
+            items:        JSON.parse(JSON.stringify(d.items || [])),
+            taxRate:      d.taxRate,
+            discountRate: d.discountRate,
+            paid:         d.paid
         };
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
         showProfileToast('saved');
-        renderEditorFormBase();   // re-render so badge updates
+        renderEditorFormBase();
         renderItemsList();
     } catch (e) { /* storage unavailable */ }
 }
@@ -213,12 +221,21 @@ function applyBusinessProfile() {
     const profile = loadBusinessProfile();
     if (!profile) return;
     const d = state.invoiceData;
-    d.orgName  = profile.orgName  || d.orgName;
-    d.address  = profile.address  || d.address;
-    d.phone    = profile.phone    || d.phone;
-    d.email    = profile.email    || d.email;
-    d.currency = profile.currency || d.currency;
-    if (profile.logo) d.logo = profile.logo;
+    // Restore ALL saved fields
+    if (profile.orgName      !== undefined) d.orgName      = profile.orgName;
+    if (profile.address      !== undefined) d.address      = profile.address;
+    if (profile.phone        !== undefined) d.phone        = profile.phone;
+    if (profile.email        !== undefined) d.email        = profile.email;
+    if (profile.currency     !== undefined) d.currency     = profile.currency;
+    if (profile.logo)                       d.logo         = profile.logo;
+    if (profile.invoiceNo    !== undefined) d.invoiceNo    = profile.invoiceNo;
+    if (profile.date         !== undefined) d.date         = profile.date;
+    if (profile.customerName !== undefined) d.customerName = profile.customerName;
+    if (profile.items        && profile.items.length)
+        d.items = JSON.parse(JSON.stringify(profile.items));
+    if (profile.taxRate      !== undefined) d.taxRate      = profile.taxRate;
+    if (profile.discountRate !== undefined) d.discountRate = profile.discountRate;
+    if (profile.paid         !== undefined) d.paid         = profile.paid;
     renderEditorFormBase();
     renderItemsList();
     renderPreview();
@@ -1807,10 +1824,19 @@ window.clearBusinessProfile  = function() {
         clearBusinessProfile();
     }
 };
-window.saveInvoiceToHistory  = function() { if(window._firebaseSaveInvoice) window._firebaseSaveInvoice(); else showConversionPopup('save'); };
-window.openInvoiceHistory    = function() { if(window._firebaseOpenHistory) window._firebaseOpenHistory(); else if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
-window.openTeamManager       = function() { if(window._firebaseOpenTeam) window._firebaseOpenTeam(); else if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
+window.saveInvoiceToHistory  = window.saveInvoiceToHistory  || function() { showConversionPopup('save'); };
+window.openInvoiceHistory    = window.openInvoiceHistory    || function() { if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
+window.openTeamManager       = window.openTeamManager       || function() { if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
+window.toggleUserMenu        = window.toggleUserMenu        || function() {};
+window.authSignOut           = window.authSignOut           || function() {};
+window.authShowTab           = window.authShowTab           || function() {};
+window.authGoogleSignIn      = window.authGoogleSignIn      || function() {};
+window.authEmailLogin        = window.authEmailLogin        || function() {};
+window.authEmailRegister     = window.authEmailRegister     || function() {};
+window.authForgotPassword    = window.authForgotPassword    || function() {};
+window.authSendOTP           = window.authSendOTP           || function() {};
+window.authVerifyOTP         = window.authVerifyOTP         || function() {};
 window.guardedSaveInvoice    = guardedSaveInvoice;
-window.openCustomerManager   = function() { if(window._firebaseOpenCustomers) window._firebaseOpenCustomers(); };
+window.openCustomerManager   = window.openCustomerManager   || function() {};
 window.closeConversionPopup  = window.closeConversionPopup  || function() {};
 window.renderDashboard       = window.renderDashboard       || function() {};
