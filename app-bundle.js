@@ -186,25 +186,17 @@ const PROFILE_KEY = 'gateway_business_profile';
 function saveBusinessProfile() {
     try {
         const d = state.invoiceData;
-        // Save ALL invoice data so full slip can be restored
         const profile = {
-            orgName:      d.orgName,
-            address:      d.address,
-            phone:        d.phone,
-            email:        d.email,
-            currency:     d.currency,
-            logo:         d.logo || '',
-            invoiceNo:    d.invoiceNo,
-            date:         d.date,
-            customerName: d.customerName,
-            items:        JSON.parse(JSON.stringify(d.items || [])),
-            taxRate:      d.taxRate,
-            discountRate: d.discountRate,
-            paid:         d.paid
+            orgName:  d.orgName,
+            address:  d.address,
+            phone:    d.phone,
+            email:    d.email,
+            currency: d.currency,
+            logo:     d.logo || ''
         };
         localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
         showProfileToast('saved');
-        renderEditorFormBase();
+        renderEditorFormBase();   // re-render so badge updates
         renderItemsList();
     } catch (e) { /* storage unavailable */ }
 }
@@ -221,21 +213,12 @@ function applyBusinessProfile() {
     const profile = loadBusinessProfile();
     if (!profile) return;
     const d = state.invoiceData;
-    // Restore ALL saved fields
-    if (profile.orgName      !== undefined) d.orgName      = profile.orgName;
-    if (profile.address      !== undefined) d.address      = profile.address;
-    if (profile.phone        !== undefined) d.phone        = profile.phone;
-    if (profile.email        !== undefined) d.email        = profile.email;
-    if (profile.currency     !== undefined) d.currency     = profile.currency;
-    if (profile.logo)                       d.logo         = profile.logo;
-    if (profile.invoiceNo    !== undefined) d.invoiceNo    = profile.invoiceNo;
-    if (profile.date         !== undefined) d.date         = profile.date;
-    if (profile.customerName !== undefined) d.customerName = profile.customerName;
-    if (profile.items        && profile.items.length)
-        d.items = JSON.parse(JSON.stringify(profile.items));
-    if (profile.taxRate      !== undefined) d.taxRate      = profile.taxRate;
-    if (profile.discountRate !== undefined) d.discountRate = profile.discountRate;
-    if (profile.paid         !== undefined) d.paid         = profile.paid;
+    d.orgName  = profile.orgName  || d.orgName;
+    d.address  = profile.address  || d.address;
+    d.phone    = profile.phone    || d.phone;
+    d.email    = profile.email    || d.email;
+    d.currency = profile.currency || d.currency;
+    if (profile.logo) d.logo = profile.logo;
     renderEditorFormBase();
     renderItemsList();
     renderPreview();
@@ -1824,19 +1807,19 @@ window.clearBusinessProfile  = function() {
         clearBusinessProfile();
     }
 };
-window.saveInvoiceToHistory  = window.saveInvoiceToHistory  || function() { showConversionPopup('save'); };
-window.openInvoiceHistory    = window.openInvoiceHistory    || function() { if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
-window.openTeamManager       = window.openTeamManager       || function() { if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
-window.toggleUserMenu        = window.toggleUserMenu        || function() {};
-window.authSignOut           = window.authSignOut           || function() {};
-window.authShowTab           = window.authShowTab           || function() {};
-window.authGoogleSignIn      = window.authGoogleSignIn      || function() {};
-window.authEmailLogin        = window.authEmailLogin        || function() {};
-window.authEmailRegister     = window.authEmailRegister     || function() {};
-window.authForgotPassword    = window.authForgotPassword    || function() {};
-window.authSendOTP           = window.authSendOTP           || function() {};
-window.authVerifyOTP         = window.authVerifyOTP         || function() {};
+window.saveInvoiceToHistory  = function(...a) { if(window._fb_saveInvoiceToHistory) return window._fb_saveInvoiceToHistory(...a); showConversionPopup('save'); };
+window.openInvoiceHistory    = function(...a) { if(window._fb_openInvoiceHistory) return window._fb_openInvoiceHistory(...a); if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
+window.openTeamManager       = function(...a) { if(window._fb_openTeamManager) return window._fb_openTeamManager(...a); if(window.showAuthModal) window.showAuthModal({tab:'login'}); };
+window.openCustomerManager   = function(...a) { if(window._fb_openCustomerManager) return window._fb_openCustomerManager(...a); };
+window.toggleUserMenu        = function(...a) { if(window._fb_toggleUserMenu) return window._fb_toggleUserMenu(...a); };
+window.authSignOut           = function(...a) { if(window._fb_authSignOut) return window._fb_authSignOut(...a); };
+window.authShowTab           = function(...a) { if(window._fb_authShowTab) return window._fb_authShowTab(...a); };
+window.authGoogleSignIn      = function(...a) { if(window._fb_authGoogleSignIn) return window._fb_authGoogleSignIn(...a); };
+window.authEmailLogin        = function(...a) { if(window._fb_authEmailLogin) return window._fb_authEmailLogin(...a); };
+window.authEmailRegister     = function(...a) { if(window._fb_authEmailRegister) return window._fb_authEmailRegister(...a); };
+window.authForgotPassword    = function(...a) { if(window._fb_authForgotPassword) return window._fb_authForgotPassword(...a); };
+window.authSendOTP           = function(...a) { if(window._fb_authSendOTP) return window._fb_authSendOTP(...a); };
+window.authVerifyOTP         = function(...a) { if(window._fb_authVerifyOTP) return window._fb_authVerifyOTP(...a); };
+window.renderDashboard       = function(...a) { if(window._fb_renderDashboard) return window._fb_renderDashboard(...a); };
+window.closeConversionPopup  = function() { document.getElementById('conversion-popup')?.remove(); };
 window.guardedSaveInvoice    = guardedSaveInvoice;
-window.openCustomerManager   = window.openCustomerManager   || function() {};
-window.closeConversionPopup  = window.closeConversionPopup  || function() {};
-window.renderDashboard       = window.renderDashboard       || function() {};
