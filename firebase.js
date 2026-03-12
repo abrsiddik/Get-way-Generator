@@ -177,21 +177,12 @@ async function loadUserProfile(user) {
 window.applyProfileToState = function(p) {
     if (!p || !window.state) return;
     const d = window.state.invoiceData;
-    // Restore ALL saved fields from profile
-    if (p.orgName      !== undefined) d.orgName      = p.orgName;
-    if (p.address      !== undefined) d.address      = p.address;
-    if (p.phone        !== undefined) d.phone        = p.phone;
-    if (p.email        !== undefined) d.email        = p.email;
-    if (p.currency     !== undefined) d.currency     = p.currency;
-    if (p.logo)                       d.logo         = p.logo;
-    if (p.invoiceNo    !== undefined) d.invoiceNo    = p.invoiceNo;
-    if (p.date         !== undefined) d.date         = p.date;
-    if (p.customerName !== undefined) d.customerName = p.customerName;
-    if (p.items        && p.items.length)
-        d.items = JSON.parse(JSON.stringify(p.items));
-    if (p.taxRate      !== undefined) d.taxRate      = p.taxRate;
-    if (p.discountRate !== undefined) d.discountRate = p.discountRate;
-    if (p.paid         !== undefined) d.paid         = p.paid;
+    if (p.orgName)  d.orgName  = p.orgName;
+    if (p.address)  d.address  = p.address;
+    if (p.phone)    d.phone    = p.phone;
+    if (p.email)    d.email    = p.email;
+    if (p.currency) d.currency = p.currency;
+    if (p.logo)     d.logo     = p.logo;
 };
 
 window.saveBusinessProfileCloud = async function() {
@@ -199,27 +190,11 @@ window.saveBusinessProfileCloud = async function() {
     if (!user) return toast('Please sign in first', 'error');
     const d = window.state?.invoiceData;
     if (!d) return;
-    // Save ALL invoice data to cloud profile
-    const profile = {
-        orgName:      d.orgName      || '',
-        address:      d.address      || '',
-        phone:        d.phone        || '',
-        email:        d.email        || '',
-        currency:     d.currency     || 'BDT',
-        logo:         d.logo         || '',
-        invoiceNo:    d.invoiceNo    || '',
-        date:         d.date         || '',
-        customerName: d.customerName || '',
-        items:        JSON.parse(JSON.stringify(d.items || [])),
-        taxRate:      d.taxRate      ?? 0,
-        discountRate: d.discountRate ?? 0,
-        paid:         d.paid         ?? 0,
-        updatedAt:    serverTimestamp()
-    };
+    const profile = { orgName:d.orgName||'', address:d.address||'', phone:d.phone||'', email:d.email||'', currency:d.currency||'BDT', logo:d.logo||'', updatedAt:serverTimestamp() };
     try {
         await setDoc(doc(db, 'users', user.uid, 'profile', 'business'), profile);
         window._businessProfile = profile;
-        toast('✓ Profile saved to cloud!', 'success');
+        toast('✓ Business profile saved to cloud!', 'success');
         if (window.renderEditorFormBase) { window.renderEditorFormBase(); window.renderItemsList(); }
     } catch(e) { toast('Save failed: ' + e.message, 'error'); }
 };
@@ -304,22 +279,36 @@ async function getWorkspaceId() {
 window.saveInvoiceToHistory = async function() {
     const user = window._currentUser;
     if (!user) return toast('Please sign in first', 'error');
-    const wsId = await getWorkspaceId();
     if (!window.state) return;
-    const inv = {
-        ...window.state.invoiceData,
-        templateId: window.state.templateId,
-        category:   window.state.category,
-        style:      window.state.style,
-        savedBy:     user.uid,
-        savedByName: user.displayName || user.email,
-        savedAt:     serverTimestamp(),
-        workspaceId: wsId
-    };
+
     try {
+        // Ensure user doc + workspace exist (handles race on new accounts)
+        await ensureUserDoc(user);
+        const wsId = await getWorkspaceId();
+        if (!wsId) return toast('Could not find your workspace. Please sign out and back in.', 'error');
+
+        const inv = {
+            ...window.state.invoiceData,
+            templateId:  window.state.templateId  || null,
+            category:    window.state.category    || null,
+            style:       window.state.style       || null,
+            savedBy:     user.uid,
+            savedByName: user.displayName || user.email || 'User',
+            savedAt:     serverTimestamp(),
+            workspaceId: wsId
+        };
         await addDoc(collection(db, 'workspaces', wsId, 'invoices'), inv);
         toast('✓ Invoice saved to history!', 'success');
-    } catch(e) { toast('Save failed: ' + e.message, 'error'); }
+        // Refresh dashboard stats
+        if (window.renderDashboard) window.renderDashboard();
+    } catch(e) {
+        console.error('saveInvoiceToHistory error:', e);
+        if (e.code === 'permission-denied') {
+            toast('Permission denied — please sign out and sign back in, then try again.', 'error');
+        } else {
+            toast('Save failed: ' + e.message, 'error');
+        }
+    }
 };
 
 window.loadInvoiceHistory = async function() {
