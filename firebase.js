@@ -80,14 +80,16 @@ onAuthStateChanged(auth, async (user) => {
 function showAuthModal(opts) {
     const modal = document.getElementById('auth-modal');
     if (!modal) return;
-    modal.style.cssText = modal.style.cssText.replace('display:none','');
-    modal.style.display = 'flex';
+    // Must use setAttribute to override the CSS  display:none !important
+    modal.setAttribute('style', 'display:flex !important');
     if (opts?.tab && window.authShowTab) window.authShowTab(opts.tab);
+    // Scroll to top of modal so it's always visible
+    modal.scrollTop = 0;
 }
 function hideAuthModal() {
     const modal = document.getElementById('auth-modal');
     if (!modal) return;
-    modal.style.display = 'none';
+    modal.setAttribute('style', 'display:none !important');
 }
 // App is always visible — guest mode means no login wall
 function showApp() { /* always visible */ }
