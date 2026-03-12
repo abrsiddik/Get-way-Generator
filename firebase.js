@@ -279,36 +279,22 @@ async function getWorkspaceId() {
 window.saveInvoiceToHistory = async function() {
     const user = window._currentUser;
     if (!user) return toast('Please sign in first', 'error');
+    const wsId = await getWorkspaceId();
     if (!window.state) return;
-
+    const inv = {
+        ...window.state.invoiceData,
+        templateId: window.state.templateId,
+        category:   window.state.category,
+        style:      window.state.style,
+        savedBy:     user.uid,
+        savedByName: user.displayName || user.email,
+        savedAt:     serverTimestamp(),
+        workspaceId: wsId
+    };
     try {
-        // Ensure user doc + workspace exist (handles race on new accounts)
-        await ensureUserDoc(user);
-        const wsId = await getWorkspaceId();
-        if (!wsId) return toast('Could not find your workspace. Please sign out and back in.', 'error');
-
-        const inv = {
-            ...window.state.invoiceData,
-            templateId:  window.state.templateId  || null,
-            category:    window.state.category    || null,
-            style:       window.state.style       || null,
-            savedBy:     user.uid,
-            savedByName: user.displayName || user.email || 'User',
-            savedAt:     serverTimestamp(),
-            workspaceId: wsId
-        };
         await addDoc(collection(db, 'workspaces', wsId, 'invoices'), inv);
         toast('✓ Invoice saved to history!', 'success');
-        // Refresh dashboard stats
-        if (window.renderDashboard) window.renderDashboard();
-    } catch(e) {
-        console.error('saveInvoiceToHistory error:', e);
-        if (e.code === 'permission-denied') {
-            toast('Permission denied — please sign out and sign back in, then try again.', 'error');
-        } else {
-            toast('Save failed: ' + e.message, 'error');
-        }
-    }
+    } catch(e) { toast('Save failed: ' + e.message, 'error'); }
 };
 
 window.loadInvoiceHistory = async function() {
@@ -775,3 +761,22 @@ function setBtnLoading(on) {
         b.classList.toggle('cursor-not-allowed', on);
     });
 }
+
+// ── Bridge assignments for lazy wrappers in app-bundle.js ────
+// app-bundle.js runs first (regular script), firebase.js runs second (ES module).
+// The lazy wrappers in app-bundle check window._fb_* at call time, so they
+// always get the real Firebase functions even though they were assigned later.
+window._fb_saveInvoiceToHistory = window.saveInvoiceToHistory;
+window._fb_openInvoiceHistory   = window.openInvoiceHistory;
+window._fb_openTeamManager      = window.openTeamManager;
+window._fb_openCustomerManager  = window.openCustomerManager;
+window._fb_toggleUserMenu       = window.toggleUserMenu;
+window._fb_authSignOut          = window.authSignOut;
+window._fb_authShowTab          = window.authShowTab;
+window._fb_authGoogleSignIn     = window.authGoogleSignIn;
+window._fb_authEmailLogin       = window.authEmailLogin;
+window._fb_authEmailRegister    = window.authEmailRegister;
+window._fb_authForgotPassword   = window.authForgotPassword;
+window._fb_authSendOTP          = window.authSendOTP;
+window._fb_authVerifyOTP        = window.authVerifyOTP;
+window._fb_renderDashboard      = window.renderDashboard;
