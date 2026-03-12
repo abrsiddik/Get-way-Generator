@@ -263,8 +263,9 @@ window.loadDashboardStats = async function() {
         invoices.forEach(inv => { const c=inv.category||'other'; catCount[c]=(catCount[c]||0)+1; });
         const topCategory  = Object.entries(catCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
         const sorted       = [...invoices].sort((a,b)=>(b.savedAt?.seconds||0)-(a.savedAt?.seconds||0));
-        return { total:invoices.length, thisMonth:thisMonthInvs.length, revenue:totalRevenue,
-                 monthRevenue, totalPaid, totalUnpaid, topCategory, currency, catCount, recent:sorted.slice(0,5) };
+        return { total:invoices.length, thisMonth:thisMonthInvs.length,
+                 revenue:totalRevenue, monthRevenue, totalPaid, totalUnpaid,
+                 topCategory, currency, catCount, recent:sorted.slice(0,5) };
     } catch(e) { console.warn('loadDashboardStats:', e); return null; }
 };
 
@@ -284,12 +285,13 @@ window.saveInvoiceToHistory = async function() {
     if (!user) return toast('Please sign in first', 'error');
     if (!window.state) return;
     try {
-        // Ensure workspace exists first (fixes new account race condition)
+        // Must run first — creates workspace doc with editorIds for new accounts
         await ensureUserDoc(user);
         const wsId = await getWorkspaceId();
-        if (!wsId) return toast('Workspace not found — sign out and back in.', 'error');
+        if (!wsId) return toast('Workspace not ready — please sign out and back in.', 'error');
+
         const d = window.state.invoiceData;
-        // DO NOT spread invoiceData — logo is base64 and can exceed Firestore 1MB limit
+        // NEVER spread invoiceData — logo is base64 and exceeds Firestore 1MB doc limit
         const inv = {
             orgName:      d.orgName      || '',
             address:      d.address      || '',
@@ -299,33 +301,31 @@ window.saveInvoiceToHistory = async function() {
             invoiceNo:    d.invoiceNo    || '',
             date:         d.date         || '',
             customerName: d.customerName || '',
-            items:        (d.items || []).map(i => ({
+            items: (d.items || []).map(i => ({
                 id:    i.id    || 0,
                 desc:  i.desc  || '',
-                qty:   i.qty   || 1,
-                price: i.price || 0
+                qty:   Number(i.qty)   || 1,
+                price: Number(i.price) || 0
             })),
-            taxRate:      d.taxRate      ?? 0,
-            discountRate: d.discountRate ?? 0,
-            paid:         d.paid         ?? 0,
+            taxRate:      Number(d.taxRate)      || 0,
+            discountRate: Number(d.discountRate) || 0,
+            paid:         Number(d.paid)         || 0,
             templateId:   window.state.templateId || '',
             category:     window.state.category   || '',
             style:        window.state.style      || '',
             savedBy:      user.uid,
-            savedByName:  user.displayName || user.email || 'User',
+            savedByName:  user.displayName || user.email || '',
             savedAt:      serverTimestamp(),
             workspaceId:  wsId
         };
         await addDoc(collection(db, 'workspaces', wsId, 'invoices'), inv);
         toast('✓ Invoice saved to history!', 'success');
-        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 300);
+        setTimeout(() => { if (window.renderDashboard) window.renderDashboard(); }, 400);
     } catch(e) {
-        console.error('saveInvoiceToHistory error:', e.code, e.message);
-        if (e.code === 'permission-denied') {
-            toast('Permission denied — please deploy Firestore rules from Firebase Console.', 'error');
-        } else {
-            toast('Save failed: ' + e.message, 'error');
-        }
+        console.error('saveInvoice error:', e.code, e.message);
+        toast(e.code === 'permission-denied'
+            ? 'Save failed — open browser console (F12) and check the exact Firestore error.'
+            : 'Save failed: ' + e.message, 'error');
     }
 };
 
@@ -794,7 +794,7 @@ function setBtnLoading(on) {
     });
 }
 
-// ── Bridge assignments (firebase.js ES module runs AFTER app-bundle.js)
+// ── Bridge assignments ────────────────────────────────────────
 window._fb_saveInvoiceToHistory = window.saveInvoiceToHistory;
 window._fb_openInvoiceHistory   = window.openInvoiceHistory;
 window._fb_openTeamManager      = window.openTeamManager;
