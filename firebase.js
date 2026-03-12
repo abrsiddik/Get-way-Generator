@@ -734,11 +734,9 @@ window.authResetPhone = function() {
     otpResult = null;
     setBtnLoading(false);
 };
-
-window.authSignOut = async function() {
     await signOut(auth);
     document.getElementById('user-menu')?.classList.add('hidden');
-    toast('Signed out', 'info');
+    toast('Signed out','info');
 };
 
 window.toggleUserMenu = function() {
@@ -761,22 +759,3 @@ function setBtnLoading(on) {
         b.classList.toggle('cursor-not-allowed', on);
     });
 }
-
-// ── Bridge assignments for lazy wrappers in app-bundle.js ────
-// app-bundle.js runs first (regular script), firebase.js runs second (ES module).
-// The lazy wrappers in app-bundle check window._fb_* at call time, so they
-// always get the real Firebase functions even though they were assigned later.
-window._fb_saveInvoiceToHistory = window.saveInvoiceToHistory;
-window._fb_openInvoiceHistory   = window.openInvoiceHistory;
-window._fb_openTeamManager      = window.openTeamManager;
-window._fb_openCustomerManager  = window.openCustomerManager;
-window._fb_toggleUserMenu       = window.toggleUserMenu;
-window._fb_authSignOut          = window.authSignOut;
-window._fb_authShowTab          = window.authShowTab;
-window._fb_authGoogleSignIn     = window.authGoogleSignIn;
-window._fb_authEmailLogin       = window.authEmailLogin;
-window._fb_authEmailRegister    = window.authEmailRegister;
-window._fb_authForgotPassword   = window.authForgotPassword;
-window._fb_authSendOTP          = window.authSendOTP;
-window._fb_authVerifyOTP        = window.authVerifyOTP;
-window._fb_renderDashboard      = window.renderDashboard;
