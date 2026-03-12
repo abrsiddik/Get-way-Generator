@@ -140,20 +140,14 @@ async function ensureUserDoc(user) {
     const userRef = doc(db, 'users', user.uid);
     const wsRef   = doc(db, 'workspaces', user.uid);
     const displayName = user.displayName || window._pendingDisplayName || '';
-
     const [userSnap, wsSnap] = await Promise.all([getDoc(userRef), getDoc(wsRef)]);
-
     if (!userSnap.exists()) {
         await setDoc(userRef, {
-            uid:         user.uid,
-            displayName,
-            email:       user.email || '',
-            photoURL:    user.photoURL || '',
-            createdAt:   serverTimestamp(),
-            workspaceId: user.uid
+            uid: user.uid, displayName,
+            email: user.email || '', photoURL: user.photoURL || '',
+            createdAt: serverTimestamp(), workspaceId: user.uid
         });
     }
-
     if (!wsSnap.exists()) {
         await setDoc(wsRef, {
             name:      (displayName || 'My') + "'s Workspace",
@@ -164,9 +158,7 @@ async function ensureUserDoc(user) {
             members:   [{ uid: user.uid, email: user.email||'', name: displayName, role: 'admin' }],
             createdAt: serverTimestamp()
         });
-        console.log('✅ Workspace created for', user.uid);
     } else {
-        // Workspace exists — make sure editorIds includes this user (repair old docs)
         const data = wsSnap.data();
         if (!data.editorIds?.includes(user.uid)) {
             await updateDoc(wsRef, {
@@ -174,7 +166,6 @@ async function ensureUserDoc(user) {
                 memberIds: arrayUnion(user.uid),
                 adminIds:  arrayUnion(user.uid)
             });
-            console.log('✅ Repaired editorIds for', user.uid);
         }
     }
 }
@@ -297,25 +288,8 @@ window.saveInvoiceToHistory = async function() {
     if (!user) return toast('Please sign in first', 'error');
     if (!window.state) return;
     try {
-        console.log('💾 Save started, uid:', user.uid);
         await ensureUserDoc(user);
-
         const wsId = await getWorkspaceId();
-        console.log('💾 workspaceId:', wsId);
-
-        // Verify workspace doc has editorIds before attempting write
-        const wsSnap = await getDoc(doc(db, 'workspaces', wsId));
-        if (!wsSnap.exists()) {
-            console.error('❌ Workspace doc missing after ensureUserDoc!');
-            return toast('Workspace missing — please sign out and back in.', 'error');
-        }
-        const wsData = wsSnap.data();
-        console.log('💾 editorIds:', wsData.editorIds, '| ownerId:', wsData.ownerId);
-        if (!wsData.editorIds?.includes(user.uid)) {
-            console.error('❌ uid not in editorIds!');
-            return toast('Permission error — your account is not an editor. Sign out and back in.', 'error');
-        }
-
         const d = window.state.invoiceData;
         const inv = {
             orgName:      d.orgName      || '',
@@ -327,10 +301,8 @@ window.saveInvoiceToHistory = async function() {
             date:         d.date         || '',
             customerName: d.customerName || '',
             items: (d.items||[]).map(i => ({
-                id:    i.id    || 0,
-                desc:  i.desc  || '',
-                qty:   Number(i.qty)   || 1,
-                price: Number(i.price) || 0
+                id: i.id||0, desc: i.desc||'',
+                qty: Number(i.qty)||1, price: Number(i.price)||0
             })),
             taxRate:      Number(d.taxRate)      || 0,
             discountRate: Number(d.discountRate) || 0,
@@ -817,11 +789,10 @@ function setBtnLoading(on) {
     });
 }
 
-// ── Bridge assignments ────────────────────────────────────────
+// ── Bridge assignments (firebase.js functions only) ──────────
 window._fb_saveInvoiceToHistory = window.saveInvoiceToHistory;
 window._fb_openInvoiceHistory   = window.openInvoiceHistory;
 window._fb_openTeamManager      = window.openTeamManager;
-window._fb_openCustomerManager  = window.openCustomerManager;
 window._fb_toggleUserMenu       = window.toggleUserMenu;
 window._fb_authSignOut          = window.authSignOut;
 window._fb_authShowTab          = window.authShowTab;
@@ -831,5 +802,4 @@ window._fb_authEmailRegister    = window.authEmailRegister;
 window._fb_authForgotPassword   = window.authForgotPassword;
 window._fb_authSendOTP          = window.authSendOTP;
 window._fb_authVerifyOTP        = window.authVerifyOTP;
-window._fb_renderDashboard      = window.renderDashboard;
 window._fb_loadDashboardStats   = window.loadDashboardStats;
