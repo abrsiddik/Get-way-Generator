@@ -177,12 +177,21 @@ async function loadUserProfile(user) {
 window.applyProfileToState = function(p) {
     if (!p || !window.state) return;
     const d = window.state.invoiceData;
-    if (p.orgName)  d.orgName  = p.orgName;
-    if (p.address)  d.address  = p.address;
-    if (p.phone)    d.phone    = p.phone;
-    if (p.email)    d.email    = p.email;
-    if (p.currency) d.currency = p.currency;
-    if (p.logo)     d.logo     = p.logo;
+    // Restore ALL saved fields from profile
+    if (p.orgName      !== undefined) d.orgName      = p.orgName;
+    if (p.address      !== undefined) d.address      = p.address;
+    if (p.phone        !== undefined) d.phone        = p.phone;
+    if (p.email        !== undefined) d.email        = p.email;
+    if (p.currency     !== undefined) d.currency     = p.currency;
+    if (p.logo)                       d.logo         = p.logo;
+    if (p.invoiceNo    !== undefined) d.invoiceNo    = p.invoiceNo;
+    if (p.date         !== undefined) d.date         = p.date;
+    if (p.customerName !== undefined) d.customerName = p.customerName;
+    if (p.items        && p.items.length)
+        d.items = JSON.parse(JSON.stringify(p.items));
+    if (p.taxRate      !== undefined) d.taxRate      = p.taxRate;
+    if (p.discountRate !== undefined) d.discountRate = p.discountRate;
+    if (p.paid         !== undefined) d.paid         = p.paid;
 };
 
 window.saveBusinessProfileCloud = async function() {
@@ -190,11 +199,27 @@ window.saveBusinessProfileCloud = async function() {
     if (!user) return toast('Please sign in first', 'error');
     const d = window.state?.invoiceData;
     if (!d) return;
-    const profile = { orgName:d.orgName||'', address:d.address||'', phone:d.phone||'', email:d.email||'', currency:d.currency||'BDT', logo:d.logo||'', updatedAt:serverTimestamp() };
+    // Save ALL invoice data to cloud profile
+    const profile = {
+        orgName:      d.orgName      || '',
+        address:      d.address      || '',
+        phone:        d.phone        || '',
+        email:        d.email        || '',
+        currency:     d.currency     || 'BDT',
+        logo:         d.logo         || '',
+        invoiceNo:    d.invoiceNo    || '',
+        date:         d.date         || '',
+        customerName: d.customerName || '',
+        items:        JSON.parse(JSON.stringify(d.items || [])),
+        taxRate:      d.taxRate      ?? 0,
+        discountRate: d.discountRate ?? 0,
+        paid:         d.paid         ?? 0,
+        updatedAt:    serverTimestamp()
+    };
     try {
         await setDoc(doc(db, 'users', user.uid, 'profile', 'business'), profile);
         window._businessProfile = profile;
-        toast('✓ Business profile saved to cloud!', 'success');
+        toast('✓ Profile saved to cloud!', 'success');
         if (window.renderEditorFormBase) { window.renderEditorFormBase(); window.renderItemsList(); }
     } catch(e) { toast('Save failed: ' + e.message, 'error'); }
 };
@@ -267,12 +292,6 @@ window.loadDashboardStats = async function() {
 
 // ── Expose showAuthModal globally so app-bundle can call it ───
 window.showAuthModal = showAuthModal;
-// ── Bridge names used by lazy wrappers in app-bundle.js ──────
-window._firebaseSaveInvoice   = window.saveInvoiceToHistory;
-window._firebaseOpenHistory   = window.openInvoiceHistory;
-window._firebaseOpenTeam      = window.openTeamManager;
-window._firebaseOpenCustomers = window.openCustomerManager;
-
 
 // ── Invoice History ───────────────────────────────────────────
 async function getWorkspaceId() {
