@@ -1425,45 +1425,6 @@ function injectWatermark(element) {
     return () => { wm.remove(); element.style.position = prev; };
 }
 
-// Force element to A4 size for export, ignoring any CSS transforms (mobile scale etc.)
-function lockToA4(element) {
-    const A4_W = 794;  // px at 96dpi = 210mm
-    const A4_H = 1123; // px at 96dpi = 297mm
-    const saved = {
-        width:     element.style.width,
-        minWidth:  element.style.minWidth,
-        maxWidth:  element.style.maxWidth,
-        height:    element.style.height,
-        minHeight: element.style.minHeight,
-        transform: element.style.transform,
-        position:  element.style.position,
-        left:      element.style.left,
-        top:       element.style.top,
-        margin:    element.style.margin,
-        padding:   element.style.padding,
-        boxSizing: element.style.boxSizing,
-        overflow:  element.style.overflow,
-    };
-    // Lock to exact A4, remove any transform scaling
-    element.style.cssText += `
-        width:${A4_W}px !important;
-        min-width:${A4_W}px !important;
-        max-width:${A4_W}px !important;
-        min-height:${A4_H}px !important;
-        transform:none !important;
-        position:relative !important;
-        left:auto !important;
-        top:auto !important;
-        margin:0 !important;
-        box-sizing:border-box !important;
-        overflow:visible !important;
-    `;
-    return () => {
-        // Restore all original styles
-        Object.entries(saved).forEach(([k,v]) => element.style[k] = v);
-    };
-}
-
 function exportToPDF() {
     const element = document.getElementById('export-target');
     const btn = document.getElementById('btn-export-pdf');
@@ -1474,34 +1435,24 @@ function exportToPDF() {
     let removeWatermark = () => {};
     if (isGuest) removeWatermark = injectWatermark(element);
 
-    // Lock to A4 before capture — removes mobile CSS scaling
-    const restoreA4 = lockToA4(element);
-
     let pdfFormat = 'a4';
     if (tmpl && tmpl.style === 'old') pdfFormat = [80, 200];
     const opt = {
         margin: 0,
         filename: `GetWayGenerator_${state.invoiceData.invoiceNo || 'invoice'}.pdf`,
         image: { type: 'jpeg', quality: 1 },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            width: 794,
-            windowWidth: 794
-        },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: pdfFormat, orientation: 'portrait' }
     };
     if (window.html2pdf) {
         setExportLoading(btn, true);
         window.html2pdf().set(opt).from(element).save()
             .then(() => {
-                restoreA4();
                 setExportLoading(btn, false);
                 removeWatermark();
                 if (isGuest) showConversionPopup('pdf');
             })
-            .catch(() => { restoreA4(); setExportLoading(btn, false); removeWatermark(); });
+            .catch(() => { setExportLoading(btn, false); removeWatermark(); });
     }
 }
 
@@ -1514,28 +1465,59 @@ function exportToPNG() {
     let removeWatermark = () => {};
     if (isGuest) removeWatermark = injectWatermark(element);
 
-    // Lock to A4 before capture — removes mobile CSS scaling
-    const restoreA4 = lockToA4(element);
-
     setExportLoading(btn, true);
-    window.html2canvas(element, {
+
+    // Clone the element into a hidden off-screen container fixed at A4 size.
+    // This avoids capturing the mobile CSS-scaled version of the invoice.
+    const A4_W = 794;
+    const clone = element.cloneNode(true);
+    const offscreen = document.createElement('div');
+    offscreen.style.cssText = [
+        'position:fixed',
+        'left:-9999px',
+        'top:0',
+        'width:' + A4_W + 'px',
+        'min-width:' + A4_W + 'px',
+        'max-width:' + A4_W + 'px',
+        'overflow:visible',
+        'z-index:-1',
+        'background:#fff',
+        'pointer-events:none'
+    ].join(';');
+    clone.style.cssText += [
+        'width:' + A4_W + 'px !important',
+        'min-width:' + A4_W + 'px !important',
+        'max-width:' + A4_W + 'px !important',
+        'transform:none !important',
+        'position:relative !important',
+        'overflow:visible !important',
+        'box-sizing:border-box !important'
+    ].join(';');
+    offscreen.appendChild(clone);
+    document.body.appendChild(offscreen);
+
+    window.html2canvas(clone, {
         scale: 3,
         useCORS: true,
         backgroundColor: '#ffffff',
-        width: 794,
-        windowWidth: 794
+        width: A4_W,
+        windowWidth: A4_W
     })
         .then(canvas => {
+            document.body.removeChild(offscreen);
             const link = document.createElement('a');
             link.download = `GetWayGenerator_${state.invoiceData.invoiceNo || 'invoice'}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
-            restoreA4();
             setExportLoading(btn, false);
             removeWatermark();
             if (isGuest) showConversionPopup('png');
         })
-        .catch(() => { restoreA4(); setExportLoading(btn, false); removeWatermark(); });
+        .catch(() => {
+            document.body.removeChild(offscreen);
+            setExportLoading(btn, false);
+            removeWatermark();
+        });
 }
 
 // ── CONVERSION POPUP (guest → register) ──────────────────────
